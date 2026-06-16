@@ -32,6 +32,12 @@ const Desktop = (() => {
     const app = apps.get(appId);
     if (!app) return;
 
+    // Mode mobile: tampilkan full-screen tanpa window manager
+    if (window.matchMedia('(max-width: 768px)').matches) {
+      openAppMobile(appId, app);
+      return;
+    }
+
     if (openWindows.has(appId)) {
       const w = openWindows.get(appId);
       w.el.classList.remove('is-minimized');
@@ -87,6 +93,47 @@ const Desktop = (() => {
     makeResizable(winEl, winEl.querySelector('.window-resize-handle'));
 
     focusWindow(appId);
+  }
+
+  function openAppMobile(appId, app) {
+    // Tutup overlay lama jika ada
+    const existing = document.getElementById('mobile-app-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'mobile-app-overlay';
+    overlay.style.cssText = [
+      'position:fixed', 'inset:0', 'z-index:9999',
+      'background:var(--bg-base, #1a1a2e)',
+      'display:flex', 'flex-direction:column',
+      'overflow:hidden'
+    ].join(';');
+
+    const header = document.createElement('div');
+    header.style.cssText = [
+      'display:flex', 'align-items:center', 'gap:8px',
+      'padding:8px 12px', 'background:var(--bg-bar, #0f0f23)',
+      'border-bottom:1px solid rgba(255,255,255,0.1)',
+      'flex-shrink:0', 'min-height:44px'
+    ].join(';');
+    header.innerHTML = `
+      <button id="mobile-back-btn" style="background:rgba(255,255,255,0.12);border:none;color:#fff;
+        padding:4px 14px;border-radius:6px;font-size:14px;cursor:pointer;">← Kembali</button>
+      <span style="color:#fff;font-size:15px;font-weight:600;">${app.icon} ${app.title}</span>`;
+
+    const body = document.createElement('div');
+    body.id = 'mobile-app-body';
+    body.style.cssText = 'flex:1;overflow:auto;min-height:0;';
+
+    overlay.appendChild(header);
+    overlay.appendChild(body);
+    document.body.appendChild(overlay);
+
+    header.querySelector('#mobile-back-btn').addEventListener('click', () => {
+      overlay.remove();
+    });
+
+    app.render(body, { close: () => overlay.remove() });
   }
 
   function closeApp(appId) {
@@ -176,15 +223,30 @@ const Desktop = (() => {
 
     document.querySelectorAll('.desktop-icon').forEach((icon) => {
       if (icon.classList.contains('is-soon')) return;
-      // Single click: highlight saja
-      icon.addEventListener('click', () => {
-        document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('is-selected'));
-        icon.classList.add('is-selected');
-      });
-      // Double click: buka app
-      icon.addEventListener('dblclick', () => {
-        openApp(icon.dataset.app);
-      });
+
+      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+
+      // Pastikan kursor pointer tampil
+      icon.style.cursor = 'pointer';
+
+      if (isTouchDevice) {
+        // Mobile/tablet: satu tap langsung buka
+        icon.addEventListener('touchend', (e) => {
+          e.preventDefault(); // cegah ghost click
+          document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('is-selected'));
+          icon.classList.add('is-selected');
+          openApp(icon.dataset.app);
+        });
+      } else {
+        // Desktop: highlight on single click, buka on double click
+        icon.addEventListener('click', () => {
+          document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('is-selected'));
+          icon.classList.add('is-selected');
+        });
+        icon.addEventListener('dblclick', () => {
+          openApp(icon.dataset.app);
+        });
+      }
     });
 
     const clockEl = document.getElementById('clock');

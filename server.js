@@ -298,6 +298,9 @@ io.on('connection', (socket) => {
     socket.leave('theater');
     user.inTheater = false;
     if (theater.hostId === socket.id) {
+      // Snapshot waktu terkini agar viewer lain tidak loncat ke posisi salah
+      theater.currentTime = theaterCurrentTime();
+      theater.lastSyncAt = Date.now();
       theater.hostId = null;
       io.to('theater').emit('theater:host-changed', null);
     }
@@ -372,7 +375,12 @@ io.on('connection', (socket) => {
   // ---- Disconnect ----
   socket.on('disconnect', () => {
     users.delete(socket.id);
-    if (theater.hostId === socket.id) theater.hostId = null;
+    if (theater.hostId === socket.id) {
+      // Snapshot waktu terkini agar posisi video tidak loncat saat host keluar
+      theater.currentTime = theaterCurrentTime();
+      theater.lastSyncAt = Date.now();
+      theater.hostId = null;
+    }
     rooms.forEach((room) => {
       if (room.memberIds.has(socket.id)) {
         room.memberIds.delete(socket.id);
