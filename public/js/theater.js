@@ -193,15 +193,17 @@
       showFloatingReaction(container, emoji, nickname);
     });
 
-    // Periodik sync kecil — jaga keselarasan waktu
+    // Periodik sync kecil — jaga keselarasan waktu (toleransi 5 detik agar tidak ganggu tontonan)
     syncInterval = setInterval(() => {
-      if (currentState.isPlaying && videoEl && !videoEl.paused && !videoEl.ended) {
-        const drift = Math.abs(videoEl.currentTime - expectedCurrentTime());
-        if (drift > 2) {
-          suppressSync = true;
-          videoEl.currentTime = expectedCurrentTime();
-          setTimeout(() => { suppressSync = false; }, 500);
-        }
+      if (!currentState.isPlaying || !videoEl || videoEl.paused || videoEl.ended) return;
+      if (!currentState.lastSyncAt) return; // belum ada state valid dari server
+      const expected = expectedCurrentTime();
+      const drift = videoEl.currentTime - expected;
+      // Hanya koreksi kalau drift > 5 detik (terlalu jauh) atau < -2 detik (ketinggalan jauh)
+      if (Math.abs(drift) > 5) {
+        suppressSync = true;
+        videoEl.currentTime = expected;
+        setTimeout(() => { suppressSync = false; }, 500);
       }
     }, 5000);
   }
@@ -270,10 +272,11 @@
   }
 
   function expectedCurrentTime() {
-    if (!currentState.isPlaying) return currentState.currentTime;
-    const elapsed = (Date.now() - (currentState.lastSyncAt || Date.now())) / 1000;
-    // lastSyncAt perlu dikirim dari server — pastikan ada
-    return currentState.currentTime + elapsed;
+    if (!currentState.isPlaying) return currentState.currentTime || 0;
+    // lastSyncAt dari server adalah timestamp ms. Kalau tidak ada, anggap baru saja sync.
+    const syncAt = currentState.lastSyncAt || Date.now();
+    const elapsed = Math.max(0, (Date.now() - syncAt) / 1000);
+    return (currentState.currentTime || 0) + elapsed;
   }
 
   function updatePlayIcon(playing, container) {

@@ -175,10 +175,14 @@ const Desktop = (() => {
     });
 
     document.querySelectorAll('.desktop-icon').forEach((icon) => {
-      icon.addEventListener('dblclick', () => openApp(icon.dataset.app));
+      if (icon.classList.contains('is-soon')) return;
+      // Single click: highlight saja
       icon.addEventListener('click', () => {
-        if (icon.classList.contains('is-soon')) return;
-        // single click juga membuka, lebih ramah untuk first-time user / mobile
+        document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('is-selected'));
+        icon.classList.add('is-selected');
+      });
+      // Double click: buka app
+      icon.addEventListener('dblclick', () => {
         openApp(icon.dataset.app);
       });
     });
