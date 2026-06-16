@@ -1,0 +1,469 @@
+/* ==========================================================================
+   THEATER — Nonton Bareng (Step 2)
+   Tambahkan ke bagian bawah public/css/style.css
+   ========================================================================== */
+
+/* ---- Root layout ---- */
+.theater-root {
+  display: flex;
+  height: 100%;
+  background: #0a0a0f;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* ---- Sidebar kiri: daftar video ---- */
+.theater-sidebar {
+  width: 220px;
+  min-width: 180px;
+  background: #111118;
+  border-right: 1px solid #2a2a3a;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.theater-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #2a2a3a;
+  background: #16161f;
+}
+
+.theater-sidebar-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f5a623;
+  letter-spacing: 0.4px;
+}
+
+.theater-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f5a623;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.theater-upload-btn:hover { background: #ffc04a; }
+
+.theater-upload-progress {
+  padding: 8px 12px;
+  background: #16161f;
+  border-bottom: 1px solid #2a2a3a;
+}
+.theater-upload-bar {
+  height: 4px;
+  background: #2a2a3a;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.theater-upload-fill {
+  height: 100%;
+  background: #f5a623;
+  border-radius: 4px;
+  transition: width 0.2s;
+  width: 0%;
+}
+#theater-upload-label {
+  font-size: 10px;
+  color: #aaa;
+}
+
+.theater-video-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+.theater-video-list::-webkit-scrollbar { width: 4px; }
+.theater-video-list::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+.theater-empty-hint {
+  font-size: 11px;
+  color: #555;
+  text-align: center;
+  padding: 20px 12px;
+  line-height: 1.5;
+}
+
+.theater-video-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: background 0.12s, border-color 0.12s;
+  position: relative;
+}
+.theater-video-item:hover { background: #1e1e2a; }
+.theater-video-item.active {
+  background: #1a1a2e;
+  border-left-color: #f5a623;
+}
+.theater-video-item.active .theater-video-thumb {
+  background: #f5a623;
+  color: #000;
+}
+
+.theater-video-thumb {
+  width: 28px;
+  height: 28px;
+  background: #2a2a3a;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.theater-video-info {
+  flex: 1;
+  min-width: 0;
+}
+.theater-video-name {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ddd;
+}
+.theater-video-size {
+  font-size: 10px;
+  color: #666;
+  margin-top: 1px;
+}
+
+.theater-video-delete {
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.theater-video-item:hover .theater-video-delete { opacity: 1; }
+.theater-video-delete:hover { color: #e05555; }
+
+/* ---- Area utama: player ---- */
+.theater-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: #080810;
+}
+
+.theater-player-wrap {
+  flex: 1;
+  position: relative;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.theater-no-video {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #333;
+  text-align: center;
+  padding: 20px;
+}
+.theater-no-video-icon { font-size: 48px; opacity: 0.3; }
+.theater-no-video-text { font-size: 13px; max-width: 280px; line-height: 1.5; }
+
+#theater-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  outline: none;
+}
+
+/* ---- Reaction overlay ---- */
+.theater-reaction-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.theater-float-reaction {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: theaterFloatUp 3s ease-out forwards;
+}
+.theater-float-emoji { font-size: 28px; line-height: 1; }
+.theater-float-name {
+  font-size: 10px;
+  background: rgba(0,0,0,0.6);
+  padding: 1px 5px;
+  border-radius: 10px;
+  color: #fff;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+@keyframes theaterFloatUp {
+  0%   { transform: translateY(0) scale(1);   opacity: 1; }
+  80%  { transform: translateY(-160px) scale(1.2); opacity: 0.9; }
+  100% { transform: translateY(-200px) scale(0.8); opacity: 0; }
+}
+
+/* ---- Controls bar ---- */
+.theater-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: #10101a;
+  border-top: 1px solid #1e1e2e;
+  flex-shrink: 0;
+}
+
+.theater-ctrl-btn {
+  background: transparent;
+  border: none;
+  color: #ccc;
+  cursor: pointer;
+  padding: 5px 7px;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: background 0.12s, color 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.theater-ctrl-btn:hover:not(:disabled) { background: #2a2a3a; color: #fff; }
+.theater-ctrl-btn:disabled { opacity: 0.3; cursor: default; }
+
+.theater-progress-wrap {
+  flex: 1;
+}
+#theater-progress {
+  width: 100%;
+  height: 4px;
+  accent-color: #f5a623;
+  cursor: pointer;
+}
+#theater-progress:disabled { opacity: 0.3; cursor: default; }
+
+.theater-time {
+  font-size: 11px;
+  color: #888;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+#theater-volume {
+  accent-color: #f5a623;
+  cursor: pointer;
+}
+
+.theater-viewers-badge {
+  font-size: 11px;
+  color: #f5a623;
+  background: rgba(245,166,35,0.12);
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* ---- Emoji reactions bar ---- */
+.theater-reactions-bar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 14px;
+  background: #0d0d18;
+  border-top: 1px solid #1a1a2a;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.theater-react-btn {
+  background: transparent;
+  border: 1px solid #2a2a3a;
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.1s, border-color 0.12s;
+  line-height: 1.3;
+}
+.theater-react-btn:hover {
+  background: #1e1e2e;
+  border-color: #f5a623;
+  transform: scale(1.15);
+}
+.theater-react-btn:active { transform: scale(0.95); }
+
+/* ---- Chat panel kanan ---- */
+.theater-chat-panel {
+  width: 260px;
+  min-width: 220px;
+  max-width: 300px;
+  background: #111118;
+  border-left: 1px solid #2a2a3a;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.theater-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #16161f;
+  border-bottom: 1px solid #2a2a3a;
+  font-size: 12px;
+  font-weight: 600;
+  color: #f5a623;
+  flex-shrink: 0;
+}
+
+.theater-online-dot {
+  font-size: 10px;
+  color: #4caf50;
+  font-weight: 400;
+}
+
+.theater-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.theater-chat-messages::-webkit-scrollbar { width: 3px; }
+.theater-chat-messages::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+.theater-chat-msg {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.theater-chat-msg--system {
+  justify-content: center;
+}
+.theater-chat-system-text {
+  font-size: 10px;
+  color: #555;
+  text-align: center;
+  font-style: italic;
+  padding: 2px 8px;
+  background: #16161f;
+  border-radius: 10px;
+}
+
+.theater-chat-msg--me {
+  flex-direction: row-reverse;
+}
+
+.theater-chat-avatar {
+  font-size: 16px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.theater-chat-bubble-wrap {
+  display: flex;
+  flex-direction: column;
+  max-width: 160px;
+}
+
+.theater-chat-nick {
+  font-size: 9px;
+  color: #666;
+  margin-bottom: 2px;
+}
+.theater-chat-msg--me .theater-chat-nick {
+  text-align: right;
+}
+
+.theater-chat-bubble {
+  background: #1e1e2e;
+  border-radius: 0 10px 10px 10px;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+  color: #ddd;
+}
+.theater-chat-msg--me .theater-chat-bubble {
+  background: #1e3a2e;
+  border-radius: 10px 0 10px 10px;
+  color: #b8f0c8;
+}
+
+.theater-chat-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #16161f;
+  border-top: 1px solid #2a2a3a;
+  flex-shrink: 0;
+}
+
+#theater-chat-input {
+  flex: 1;
+  background: #1e1e2e;
+  border: 1px solid #2a2a3a;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: #eee;
+  outline: none;
+  transition: border-color 0.15s;
+}
+#theater-chat-input:focus { border-color: #f5a623; }
+#theater-chat-input::placeholder { color: #444; }
+
+#theater-chat-send {
+  background: #f5a623;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+#theater-chat-send:hover { background: #ffc04a; }
+
+/* ---- Fullscreen override ---- */
+.theater-player-wrap:fullscreen,
+.theater-player-wrap:-webkit-full-screen {
+  background: #000;
+}
+.theater-player-wrap:fullscreen #theater-video,
+.theater-player-wrap:-webkit-full-screen #theater-video {
+  width: 100vw;
+  height: 100vh;
+}
