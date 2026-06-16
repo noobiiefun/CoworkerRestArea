@@ -24,6 +24,7 @@
   let videoEl = null;         // <video> element
   let suppressSync = false;   // cegah feedback loop saat apply state
   let syncInterval = null;
+  let _container = null;      // referensi container window
 
   // -------------------------------------------------------------------------
   // Render HTML utama theater
@@ -104,17 +105,27 @@
   // Init — dipanggil saat jendela Nonton Bareng dibuka
   // -------------------------------------------------------------------------
   function init(container) {
+    _container = container;
     container.innerHTML = renderHTML();
 
     // Referensi elemen
     videoEl = container.querySelector('#theater-video');
 
     // Dapatkan socket & user dari namespace global (diset oleh chat.js)
-    socket = window._theaterSocket || window.io?.();
-    meUser = window.ME;
+    // Coba berbagai cara mendapatkan socket yang sudah terhubung
+    socket = window._theaterSocket
+          || (window.io ? window.io() : null);
+
+    // Jika masih null, coba ambil dari instance socket.io yang sudah ada
+    if (!socket && typeof io !== 'undefined') {
+      socket = io();
+    }
+
+    meUser = window.ME || { id: null, nickname: 'Anonim', avatar: '👤' };
 
     if (!socket) {
-      container.querySelector('.theater-no-video-text').textContent = 'Koneksi socket tidak tersedia. Buka Ruang Obrolan dulu.';
+      const hint = container.querySelector('.theater-no-video-text');
+      if (hint) hint.textContent = 'Koneksi socket tidak tersedia. Buka Ruang Obrolan dulu, lalu buka Nonton Bareng.';
       return;
     }
 
@@ -135,11 +146,11 @@
       renderVideoList(container);
       renderViewers(container);
       renderChatHistory(container);
-      applyState(state);
+      applyState(state, container);
     });
 
     socket.on('theater:state', (state) => {
-      applyState(state);
+      applyState(state, container);
     });
 
     socket.on('theater:video-added', (video) => {
@@ -212,13 +223,15 @@
   // -------------------------------------------------------------------------
   // Apply state dari server → update video player
   // -------------------------------------------------------------------------
-  function applyState(state) {
+  function applyState(state, container) {
     if (!state) return;
     currentState = state;
 
-    const noVideoEl = document.getElementById('theater-no-video');
-    const playBtn = document.getElementById('theater-play-btn');
-    const progressEl = document.getElementById('theater-progress');
+    // Cari container dari videoEl jika tidak dikirim
+    const cont = container || videoEl?.closest('.theater-root')?.parentElement;
+    const noVideoEl = cont ? cont.querySelector('#theater-no-video') : document.getElementById('theater-no-video');
+    const playBtn = cont ? cont.querySelector('#theater-play-btn') : document.getElementById('theater-play-btn');
+    const progressEl = cont ? cont.querySelector('#theater-progress') : document.getElementById('theater-progress');
 
     if (state.currentVideo) {
       if (videoEl.src !== window.location.origin + state.currentVideo.url) {
@@ -247,7 +260,7 @@
         if (playBtn) playBtn.disabled = false;
         if (progressEl) progressEl.disabled = false;
       }
-      updatePlayIcon(state.isPlaying);
+      updatePlayIcon(state.isPlaying, cont);
     } else {
       videoEl.style.display = 'none';
       if (noVideoEl) noVideoEl.style.display = 'flex';
@@ -263,8 +276,9 @@
     return currentState.currentTime + elapsed;
   }
 
-  function updatePlayIcon(playing) {
-    const icon = document.getElementById('theater-play-icon');
+  function updatePlayIcon(playing, container) {
+    const cont = container || videoEl?.closest('.theater-root')?.parentElement;
+    const icon = cont ? cont.querySelector('#theater-play-icon') : document.getElementById('theater-play-icon');
     if (!icon) return;
     icon.innerHTML = playing
       ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
@@ -278,8 +292,8 @@
     if (!videoEl) return;
 
     videoEl.addEventListener('timeupdate', () => {
-      const progressEl = document.getElementById('theater-progress');
-      const timeEl = document.getElementById('theater-time');
+      const progressEl = _container ? _container.querySelector('#theater-progress') : null;
+      const timeEl = _container ? _container.querySelector('#theater-time') : null;
       if (progressEl && videoEl.duration) {
         progressEl.value = (videoEl.currentTime / videoEl.duration) * 100;
       }
@@ -305,7 +319,7 @@
     });
 
     videoEl.addEventListener('ended', () => {
-      updatePlayIcon(false);
+      updatePlayIcon(false, videoEl?.closest('.theater-root')?.parentElement);
     });
   }
 
@@ -546,17 +560,8 @@
     Desktop.registerApp('theater', {
       icon: '📺',
       title: 'Nonton Bareng',
-      width: 1080,
-      height: 660,
-      minWidth: 800,
-      minHeight: 500,
-      onOpen(container, win) {
+      render(container, { close }) {
         init(container);
-        // Simpan destroy ke window agar dipanggil saat tutup
-        win._onClose = destroy;
-      },
-      onClose() {
-        destroy();
       }
     });
   });
