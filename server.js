@@ -310,6 +310,35 @@ deleteExpiredVideos();
 setInterval(deleteExpiredVideos, 6 * 60 * 60 * 1000);
 
 
+// ---------------------------------------------------------------------------
+// Watch Me — sesi screen share (WebRTC, signaling lewat Socket.IO)
+// ---------------------------------------------------------------------------
+/**
+ * @type {Map<string, {
+ *   id: string, name: string,
+ *   broadcasterId: string, broadcasterName: string,
+ *   viewerIds: Set<string>,
+ *   messages: Array,
+ *   createdAt: number
+ * }>}
+ */
+const watchmeRooms = new Map();
+
+function watchmeRoomSummary(wr) {
+  return {
+    id: wr.id,
+    name: wr.name,
+    broadcasterId: wr.broadcasterId,
+    broadcasterName: wr.broadcasterName,
+    viewerCount: wr.viewerIds.size
+  };
+}
+
+function broadcastWatchmeRoomList() {
+  const list = Array.from(watchmeRooms.values()).map(watchmeRoomSummary);
+  io.emit('watchme:rooms-list', list);
+}
+
 rooms.set('lobby', {
   id: 'lobby', name: 'Lobby Utama', type: 'public',
   memberIds: new Set(), createdBy: null, messages: []
@@ -361,7 +390,8 @@ io.on('connection', (socket) => {
     id: socket.id, socketId: socket.id,
     nickname: randomNickname(), avatar: randomAvatar(),
     rooms: new Set(['lobby']),
-    theaterRoomId: null  // theater room yang sedang diikuti
+    theaterRoomId: null,  // theater room yang sedang diikuti
+    watchmeRoomId: null   // watch me room yang sedang diikuti
   };
   users.set(socket.id, user);
 
@@ -656,10 +686,142 @@ io.on('connection', (socket) => {
     io.to(user.theaterRoomId).emit('theater:reaction', { userId: user.id, nickname: user.nickname, emoji });
   });
 
+  // ---- WATCH ME events ----
+
+  /** Minta daftar sesi aktif */
+  socket.on('watchme:get-rooms', () => {
+    socket.emit('watchme:rooms-list', Array.from(watchmeRooms.values()).map(watchmeRoomSummary));
+  });
+
+  /** Broadcaster membuat sesi baru */
+  socket.on('watchme:create-room', ({ broadcasterName, broadcasterId }) => {
+    // Hapus sesi lama milik broadcaster ini jika ada
+    watchmeRooms.forEach((wr, wrid) => {
+      if (wr.broadcasterId === socket.id) {
+        io.to(wrid).emit('watchme:room-ended');
+        watchmeRooms.delete(wrid);
+      }
+    });
+
+    const wrid = makeId('wm_');
+    const roomName = `🖥️ ${String(broadcasterName || user.nickname).slice(0, 24)}`;
+    const wr = {
+      id: wrid,
+      name: roomName,
+      broadcasterId: socket.id,
+      broadcasterName: user.nickname,
+      viewerIds: new Set(),
+      messages: [],
+      createdAt: Date.now()
+    };
+    watchmeRooms.set(wrid, wr);
+    socket.join(wrid);
+    user.watchmeRoomId = wrid;
+
+    socket.emit('watchme:room-created', { roomId: wrid, roomName });
+    broadcastWatchmeRoomList();
+  });
+
+  /** Viewer masuk ke sesi */
+  socket.on('watchme:join-room', ({ roomId }) => {
+    const wr = watchmeRooms.get(roomId);
+    if (!wr) { socket.emit('watchme:error', 'Sesi tidak ditemukan'); return; }
+    if (wr.broadcasterId === socket.id) { socket.emit('watchme:error', 'Kamu adalah broadcaster sesi ini'); return; }
+
+    // Keluar dari sesi lama jika ada
+    leaveCurrentWatchmeRoom(socket, user);
+
+    wr.viewerIds.add(socket.id);
+    socket.join(roomId);
+    user.watchmeRoomId = roomId;
+
+    const viewers = Array.from(wr.viewerIds)
+      .map(id => users.get(id))
+      .filter(Boolean)
+      .map(publicUserView);
+
+    // Kirim state awal ke viewer
+    socket.emit('watchme:init', {
+      viewers,
+      messages: wr.messages.slice(-100)
+    });
+
+    // Beritahu broadcaster ada viewer baru (broadcaster akan kirim WebRTC offer)
+    io.to(wr.broadcasterId).emit('watchme:viewer-joined', {
+      viewerId: socket.id,
+      viewerNickname: user.nickname,
+      viewerAvatar: user.avatar
+    });
+
+    io.to(roomId).emit('watchme:viewers-count', wr.viewerIds.size);
+    broadcastWatchmeRoomList();
+  });
+
+  /** Viewer keluar */
+  socket.on('watchme:leave-room', () => {
+    leaveCurrentWatchmeRoom(socket, user);
+  });
+
+  function leaveCurrentWatchmeRoom(socket, user) {
+    if (!user.watchmeRoomId) return;
+    const wr = watchmeRooms.get(user.watchmeRoomId);
+    if (wr) {
+      if (wr.broadcasterId === socket.id) {
+        // Broadcaster pergi → sesi berakhir
+        io.to(wr.id).emit('watchme:room-ended');
+        watchmeRooms.delete(wr.id);
+        broadcastWatchmeRoomList();
+      } else {
+        // Viewer pergi
+        wr.viewerIds.delete(socket.id);
+        socket.leave(wr.id);
+        io.to(wr.broadcasterId).emit('watchme:viewer-left', socket.id);
+        io.to(wr.id).emit('watchme:viewers-count', wr.viewerIds.size);
+        broadcastWatchmeRoomList();
+      }
+    }
+    user.watchmeRoomId = null;
+  }
+
+  // WebRTC signaling — relay antara broadcaster & viewer
+  socket.on('watchme:offer', ({ to, offer }) => {
+    io.to(to).emit('watchme:offer', { from: socket.id, offer });
+  });
+
+  socket.on('watchme:answer', ({ to, answer }) => {
+    io.to(to).emit('watchme:answer', { from: socket.id, answer });
+  });
+
+  socket.on('watchme:ice-candidate', ({ to, candidate }) => {
+    io.to(to).emit('watchme:ice-candidate', { from: socket.id, candidate });
+  });
+
+  /** Chat di Watch Me */
+  socket.on('watchme:message-send', (text) => {
+    if (!user.watchmeRoomId) return;
+    const wr = watchmeRooms.get(user.watchmeRoomId);
+    if (!wr) return;
+    const clean = String(text || '').trim().slice(0, 500);
+    if (!clean) return;
+    const msg = { id: makeId('wm_m_'), authorId: user.id, nickname: user.nickname, avatar: user.avatar, text: clean, time: Date.now() };
+    wr.messages.push(msg);
+    if (wr.messages.length > 200) wr.messages.shift();
+    io.to(wr.id).emit('watchme:message', msg);
+  });
+
+  /** React */
+  socket.on('watchme:react', (emoji) => {
+    if (!user.watchmeRoomId) return;
+    const ALLOWED = ['👍','❤️','😂','😮','🔥','👏','🎉','😱'];
+    if (!ALLOWED.includes(emoji)) return;
+    io.to(user.watchmeRoomId).emit('watchme:reaction', { userId: user.id, nickname: user.nickname, emoji });
+  });
+
   // ---- Disconnect ----
   socket.on('disconnect', () => {
     users.delete(socket.id);
     leaveCurrentTheaterRoom(socket, user);
+    leaveCurrentWatchmeRoom(socket, user);
     rooms.forEach((room) => {
       if (room.memberIds.has(socket.id)) {
         room.memberIds.delete(socket.id);

@@ -6,6 +6,7 @@
 <title>Coworker Rest Area</title>
 <link rel="stylesheet" href="/css/style.css" />
 <link rel="stylesheet" href="/css/theater.css" />
+<link rel="stylesheet" href="/css/watchme.css" />
 </head>
 <body>
 
@@ -92,10 +93,9 @@
         <span class="icon-label">Nonton Bareng</span>
       </button>
       <!-- Watch Me — masih SOON -->
-      <button class="desktop-icon is-soon" data-app="watchme" title="Segera hadir">
+      <button class="desktop-icon" data-app="watchme" title="Watch Me">
         <span class="icon-glyph">🖥️</span>
         <span class="icon-label">Watch Me</span>
-        <span class="soon-badge">SOON</span>
       </button>
     </div>
 
@@ -229,7 +229,7 @@
       <div id="start-menu" class="hidden">
         <div class="start-menu-item" data-app="chat">💬 Ruang Obrolan</div>
         <div class="start-menu-item" data-app="theater">📺 Nonton Bareng</div>
-        <div class="start-menu-item disabled" data-app="watchme">🖥️ Watch Me <small>segera</small></div>
+        <div class="start-menu-item" data-app="watchme">🖥️ Watch Me</div>
       </div>
       <div id="taskbar-running"></div>
       <div id="taskbar-right">
@@ -262,5 +262,6 @@
   <script src="/js/desktop.js"></script>
   <script src="/js/chat.js"></script>
   <script src="/js/theater.js"></script>
+  <script src="/js/watchme.js"></script>
 </body>
 </html>
