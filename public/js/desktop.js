@@ -223,30 +223,27 @@ const Desktop = (() => {
 
     document.querySelectorAll('.desktop-icon').forEach((icon) => {
       if (icon.classList.contains('is-soon')) return;
-
-      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-
-      // Pastikan kursor pointer tampil
       icon.style.cursor = 'pointer';
 
-      if (isTouchDevice) {
-        // Mobile/tablet: satu tap langsung buka
-        icon.addEventListener('touchend', (e) => {
-          e.preventDefault(); // cegah ghost click
-          document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('is-selected'));
-          icon.classList.add('is-selected');
+      // Single click untuk semua perangkat (fix: double-click tidak reliable)
+      let lastClick = 0;
+      icon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const now = Date.now();
+        document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('is-selected'));
+        icon.classList.add('is-selected');
+        // Buka langsung jika: touch device, atau klik kedua dalam 400ms (double-click manual)
+        const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+        if (isTouchDevice || (now - lastClick < 400)) {
           openApp(icon.dataset.app);
-        });
-      } else {
-        // Desktop: highlight on single click, buka on double click
-        icon.addEventListener('click', () => {
-          document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('is-selected'));
-          icon.classList.add('is-selected');
-        });
-        icon.addEventListener('dblclick', () => {
-          openApp(icon.dataset.app);
-        });
-      }
+        }
+        lastClick = now;
+      });
+      // Tetap support dblclick native
+      icon.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        openApp(icon.dataset.app);
+      });
     });
 
     const clockEl = document.getElementById('clock');

@@ -41,18 +41,35 @@
     return `
 <div class="theater-root" id="theater-root">
 
-  <!-- Video element GLOBAL — di luar panel agar selalu ada di DOM (fix mobile video hilang) -->
+  <!-- Video element GLOBAL — di luar panel agar selalu ada di DOM -->
   <video id="theater-video" preload="metadata" playsinline
     style="display:none;position:absolute;width:0;height:0;pointer-events:none;opacity:0"></video>
 
-  <!-- ======== LOBBY PEMILIH RUANGAN ======== -->
+  <!-- ======== LOBBY: daftar ruangan (1 ruangan per pengupload) ======== -->
   <div class="theater-lobby" id="theater-lobby">
     <div class="theater-lobby-header">
-      <span class="theater-lobby-title">📺 Pilih Ruangan Nonton</span>
-      <button class="theater-create-room-btn" id="theater-create-room-btn">+ Buat Ruangan</button>
+      <span class="theater-lobby-title">📺 Nonton Bareng</span>
+      <span class="theater-lobby-hint">Upload video untuk mulai ruangan kamu sendiri</span>
     </div>
+    <!-- Tombol upload di lobby -->
+    <div class="theater-lobby-upload-row">
+      <button class="theater-upload-btn" id="theater-lobby-upload-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload Video (Buat Ruanganku)
+      </button>
+      <input type="file" id="theater-file-input" accept="video/*" style="display:none">
+      <div class="theater-upload-progress" id="theater-upload-progress" style="display:none">
+        <div class="theater-upload-bar"><div class="theater-upload-fill" id="theater-upload-fill"></div></div>
+        <span id="theater-upload-label">Mengupload…</span>
+      </div>
+    </div>
+    <!-- Kartu ruangan -->
     <div class="theater-lobby-rooms" id="theater-lobby-rooms">
-      <div class="theater-empty-hint">Memuat daftar ruangan…</div>
+      <div class="theater-empty-hint">Belum ada ruangan. Upload video untuk mulai!</div>
     </div>
   </div>
 
@@ -74,7 +91,7 @@
     <!-- Konten 3 panel -->
     <div class="theater-panels" id="theater-panels">
 
-      <!-- Panel kiri: daftar video -->
+      <!-- Panel kiri: daftar video di ruangan ini -->
       <div class="theater-sidebar theater-panel" id="panel-list" data-panel="list">
         <div class="theater-sidebar-header">
           <span class="theater-sidebar-title">🎬 Daftar Video</span>
@@ -86,25 +103,24 @@
             </svg>
             Upload
           </button>
+          <input type="file" id="theater-file-input-room" accept="video/*" style="display:none">
         </div>
-        <input type="file" id="theater-file-input" accept="video/*" style="display:none">
-        <div class="theater-upload-progress" id="theater-upload-progress" style="display:none">
-          <div class="theater-upload-bar"><div class="theater-upload-fill" id="theater-upload-fill"></div></div>
-          <span id="theater-upload-label">Mengupload…</span>
+        <div class="theater-upload-progress" id="theater-upload-progress-room" style="display:none">
+          <div class="theater-upload-bar"><div class="theater-upload-fill" id="theater-upload-fill-room"></div></div>
+          <span id="theater-upload-label-room">Mengupload…</span>
         </div>
         <div class="theater-video-list" id="theater-video-list">
-          <div class="theater-empty-hint">Belum ada video. Upload dulu!</div>
+          <div class="theater-empty-hint">Belum ada video.</div>
         </div>
       </div>
 
-      <!-- Panel tengah: player — berisi VIEWPORT saja, video asli ada di luar -->
+      <!-- Panel tengah: player -->
       <div class="theater-main theater-panel active" id="panel-player" data-panel="player">
         <div class="theater-player-wrap" id="theater-player-wrap">
           <div class="theater-no-video" id="theater-no-video">
             <div class="theater-no-video-icon">🎬</div>
             <div class="theater-no-video-text">Pilih video dari daftar untuk mulai nonton bareng</div>
           </div>
-          <!-- Slot: video akan di-append ke sini saat tab player aktif -->
           <div id="theater-video-slot" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000"></div>
           <div class="theater-reaction-overlay" id="theater-reaction-overlay"></div>
         </div>
@@ -220,6 +236,8 @@
     });
 
     socket.on('theater:viewer-joined', (user) => {
+      // Skip diri sendiri — sudah masuk via theater:init
+      if (meUser && user.id === meUser.id) return;
       if (!viewers.find(v => v.id === user.id)) viewers.push(user);
       renderViewers(container);
     });
@@ -230,10 +248,16 @@
     });
 
     socket.on('theater:viewers-count', (count) => {
+      // Server adalah sumber kebenaran untuk jumlah penonton
       const el = container.querySelector('#theater-viewer-count');
       if (el) el.textContent = count + ' penonton';
       const badge = container.querySelector('#theater-viewers-badge');
       if (badge) badge.textContent = '👀 ' + count;
+      // Update juga data di theaterRoomsList agar lobby akurat
+      if (currentRoomId) {
+        const room = theaterRoomsList.find(r => r.id === currentRoomId);
+        if (room) room.memberCount = count;
+      }
     });
 
     socket.on('theater:user-updated', (user) => {
@@ -247,11 +271,6 @@
 
     socket.on('theater:reaction', ({ nickname, emoji }) => {
       showFloatingReaction(container, emoji, nickname);
-    });
-
-    socket.on('theater:room-created', ({ id, name }) => {
-      // Langsung masuk ke ruangan yang baru dibuat
-      joinTheaterRoom(container, id, name);
     });
 
     socket.on('theater:error', (msg) => {
@@ -276,13 +295,28 @@
   }
 
   // -------------------------------------------------------------------------
-  // Lobby: daftar & buat ruangan
+  // Lobby: daftar ruangan & upload
   // -------------------------------------------------------------------------
   function bindLobby(container) {
-    container.querySelector('#theater-create-room-btn')?.addEventListener('click', () => {
-      const name = prompt('Nama ruangan nonton:', `Ruang ${meUser.nickname || 'Baru'}`);
-      if (name === null) return; // dibatalkan
-      socket.emit('theater:create-room', { name: name.trim() || 'Ruangan Baru' });
+    // Tombol upload di lobby — buat/update ruangan pengupload otomatis
+    const lobbyUploadBtn = container.querySelector('#theater-lobby-upload-btn');
+    const fileInput = container.querySelector('#theater-file-input');
+    lobbyUploadBtn?.addEventListener('click', () => fileInput?.click());
+    fileInput?.addEventListener('change', () => {
+      const file = fileInput?.files?.[0];
+      if (!file) return;
+      doUpload(container, file, {
+        progressWrapId: '#theater-upload-progress',
+        fillId: '#theater-upload-fill',
+        labelId: '#theater-upload-label',
+        fileInput,
+        onDone: (result) => {
+          // Otomatis masuk ke ruangan pengupload setelah upload
+          if (result.theaterRoomId) {
+            joinTheaterRoom(container, result.theaterRoomId, meUser.nickname + "'s Room");
+          }
+        }
+      });
     });
 
     container.querySelector('#theater-back-btn')?.addEventListener('click', () => {
@@ -290,41 +324,83 @@
     });
   }
 
+  // Upload helper — bisa dipakai dari lobby maupun dari dalam ruangan
+  function doUpload(container, file, { progressWrapId, fillId, labelId, fileInput, onDone }) {
+    const progressWrap = container.querySelector(progressWrapId);
+    const fill = container.querySelector(fillId);
+    const label = container.querySelector(labelId);
+    if (progressWrap) progressWrap.style.display = 'block';
+
+    const fd = new FormData();
+    fd.append('video', file);
+    fd.append('uploaderId', meUser.id || '');
+    fd.append('uploaderName', meUser.nickname || 'Anonim');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/upload-video');
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        if (fill) fill.style.width = pct + '%';
+        if (label) label.textContent = `Mengupload… ${pct}%`;
+      }
+    });
+    xhr.addEventListener('load', () => {
+      if (progressWrap) progressWrap.style.display = 'none';
+      if (fill) fill.style.width = '0%';
+      if (fileInput) fileInput.value = '';
+      if (xhr.status !== 200) { alert('Upload gagal: ' + xhr.statusText); return; }
+      try {
+        const result = JSON.parse(xhr.responseText);
+        if (onDone) onDone(result);
+      } catch(e) {}
+    });
+    xhr.addEventListener('error', () => {
+      if (progressWrap) progressWrap.style.display = 'none';
+      alert('Upload error.');
+    });
+    xhr.send(fd);
+  }
+
   function renderRoomsList(container) {
     const el = container.querySelector('#theater-lobby-rooms');
     if (!el) return;
     if (theaterRoomsList.length === 0) {
-      el.innerHTML = '<div class="theater-empty-hint">Belum ada ruangan. Buat ruangan baru!</div>';
+      el.innerHTML = '<div class="theater-empty-hint">Belum ada ruangan. Upload video untuk mulai!</div>';
       return;
     }
     el.innerHTML = theaterRoomsList.map(tr => `
       <div class="theater-room-card ${tr.id === currentRoomId ? 'active' : ''}" data-id="${tr.id}">
+        <div class="theater-room-card-thumb">📺</div>
         <div class="theater-room-card-info">
-          <div class="theater-room-card-name">📺 ${escHtml(tr.name)}</div>
+          <div class="theater-room-card-name">${escHtml(tr.name)}</div>
           <div class="theater-room-card-meta">
-            ${tr.memberCount} penonton
-            ${tr.currentVideoName ? '· 🎬 ' + escHtml(tr.currentVideoName) : '· Tidak ada video'}
+            ${tr.memberCount > 0 ? `👀 ${tr.memberCount} penonton · ` : ''}
+            ${tr.currentVideoName ? '🎬 ' + escHtml(tr.currentVideoName) : 'Tidak ada video'}
             ${tr.isPlaying ? ' · ▶ Sedang diputar' : ''}
           </div>
         </div>
         <button class="theater-room-join-btn" data-id="${tr.id}">
-          ${tr.id === currentRoomId ? 'Sedang di sini' : 'Masuk'}
+          ${tr.id === currentRoomId ? '✓ Di sini' : 'Masuk'}
         </button>
       </div>
     `).join('');
 
     el.querySelectorAll('.theater-room-join-btn').forEach(btn => {
-      if (btn.textContent.trim() === 'Sedang di sini') return;
+      if (btn.textContent.trim() === '✓ Di sini') return;
       btn.addEventListener('click', () => {
         const card = btn.closest('.theater-room-card');
         const rid = card.dataset.id;
-        const rname = card.querySelector('.theater-room-card-name').textContent.replace('📺 ', '');
+        const rname = card.querySelector('.theater-room-card-name').textContent;
         joinTheaterRoom(container, rid, rname);
       });
     });
   }
 
   function joinTheaterRoom(container, roomId, roomName) {
+    // Jika sudah di room ini, tidak perlu join ulang
+    if (currentRoomId === roomId) return;
+
     currentRoomId = roomId;
     currentRoomName = roomName;
 
@@ -337,7 +413,7 @@
     const nameBar = container.querySelector('#theater-room-name-bar');
     if (nameBar) nameBar.textContent = roomName;
 
-    // Reset state player
+    // Reset state player & viewers (akan diisi ulang dari theater:init)
     if (videoEl) {
       suppressSync = true;
       videoEl.pause();
@@ -351,14 +427,22 @@
     currentState = { currentVideo: null, isPlaying: false, currentTime: 0, hostId: null, lastSyncAt: null };
     viewers = [];
     theaterMessages = [];
+    videos = [];
+    renderViewers(container);
+    renderVideoList(container);
+    renderChatHistory(container);
 
     socket.emit('theater:join-room', roomId);
   }
 
   function leaveRoom(container) {
     socket.emit('theater:leave-room');
+
+    // Reset DULU sebelum render, agar card tidak terjebak di '✓ Di sini'
     currentRoomId = null;
     currentRoomName = null;
+    viewers = [];
+    theaterMessages = [];
 
     if (videoEl) {
       suppressSync = true;
@@ -368,14 +452,16 @@
       videoEl.style.opacity = '0';
       suppressSync = false;
     }
-    viewers = [];
-    theaterMessages = [];
+    currentState = { currentVideo: null, isPlaying: false, currentTime: 0, hostId: null, lastSyncAt: null };
 
     const lobby = container.querySelector('#theater-lobby');
     const watch = container.querySelector('#theater-watch');
     if (watch) watch.style.display = 'none';
     if (lobby) lobby.style.display = 'flex';
 
+    // Render ulang list segera dengan data yang sudah ada (currentRoomId sudah null)
+    // Server akan kirim update via broadcastTheaterRoomList setelah leave
+    renderRoomsList(container);
     socket.emit('theater:get-rooms');
   }
 
@@ -627,46 +713,24 @@
   }
 
   // -------------------------------------------------------------------------
-  // Bind upload
+  // Bind upload di dalam ruangan
   // -------------------------------------------------------------------------
   function bindUpload(container) {
     const btn = container.querySelector('#theater-upload-btn');
-    const fileInput = container.querySelector('#theater-file-input');
+    const fileInput = container.querySelector('#theater-file-input-room');
 
     btn?.addEventListener('click', () => fileInput?.click());
 
     fileInput?.addEventListener('change', () => {
       const file = fileInput?.files?.[0];
       if (!file) return;
-
-      const progressWrap = container.querySelector('#theater-upload-progress');
-      const fill = container.querySelector('#theater-upload-fill');
-      const label = container.querySelector('#theater-upload-label');
-      if (progressWrap) progressWrap.style.display = 'block';
-
-      const fd = new FormData();
-      fd.append('video', file);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/upload-video');
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          if (fill) fill.style.width = pct + '%';
-          if (label) label.textContent = `Mengupload… ${pct}%`;
-        }
+      doUpload(container, file, {
+        progressWrapId: '#theater-upload-progress-room',
+        fillId: '#theater-upload-fill-room',
+        labelId: '#theater-upload-label-room',
+        fileInput,
+        onDone: () => {} // video-added socket event akan update list otomatis
       });
-      xhr.addEventListener('load', () => {
-        if (progressWrap) progressWrap.style.display = 'none';
-        if (fill) fill.style.width = '0%';
-        fileInput.value = '';
-        if (xhr.status !== 200) alert('Upload gagal: ' + xhr.statusText);
-      });
-      xhr.addEventListener('error', () => {
-        if (progressWrap) progressWrap.style.display = 'none';
-        alert('Upload error.');
-      });
-      xhr.send(fd);
     });
   }
 
