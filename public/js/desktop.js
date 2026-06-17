@@ -261,9 +261,9 @@ const Desktop = (() => {
         const secsHand  = clockWidget.querySelector('.clock-hand-sec');
         const minsHand  = clockWidget.querySelector('.clock-hand-min');
         const hoursHand = clockWidget.querySelector('.clock-hand-hour');
-        if (secsHand)  secsHand.setAttribute('transform',  `rotate(${secDeg},  28, 28)`);
-        if (minsHand)  minsHand.setAttribute('transform',  `rotate(${minDeg},  28, 28)`);
-        if (hoursHand) hoursHand.setAttribute('transform', `rotate(${hourDeg}, 28, 28)`);
+        if (secsHand)  secsHand.setAttribute('transform',  `rotate(${secDeg},  80, 80)`);
+        if (minsHand)  minsHand.setAttribute('transform',  `rotate(${minDeg},  80, 80)`);
+        if (hoursHand) hoursHand.setAttribute('transform', `rotate(${hourDeg}, 80, 80)`);
         // Tanggal
         const dateEl = document.getElementById('desktop-date');
         if (dateEl) {
@@ -288,23 +288,24 @@ const Desktop = (() => {
     // ---- Wallpaper changer ----
     function applyWallpaper(src) {
       const wp = document.getElementById('wallpaper');
+      const overlay = document.getElementById('wallpaper-overlay');
       if (!wp) return;
-      // Simpan ke localStorage agar persist
       try { localStorage.setItem('cra_wallpaper', src); } catch(e) {}
       if (src === 'default') {
         wp.style.backgroundImage = '';
-        wp.style.backgroundSize = '';
+        wp.style.backgroundSize  = '';
         wp.style.backgroundPosition = '';
         const svg = wp.querySelector('svg');
         if (svg) svg.style.display = '';
+        if (overlay) overlay.style.display = 'none';
         return;
       }
-      // Sembunyikan SVG default, tampilkan gambar
+      // Sembunyikan SVG, tampilkan gambar
       const svg = wp.querySelector('svg');
       if (svg) svg.style.display = 'none';
-      wp.style.backgroundImage = `url('${src}')`;
-      wp.style.backgroundSize = 'cover';
-      wp.style.backgroundPosition = 'center';
+      wp.style.cssText += ';background-image:url("' + src + '") !important;background-size:cover !important;background-position:center !important;background-repeat:no-repeat !important;';
+      // Overlay tipis agar ikon tetap terbaca
+      if (overlay) overlay.style.display = 'block';
     }
 
     // Restore wallpaper dari localStorage saat load

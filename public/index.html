@@ -34,6 +34,7 @@
   <!-- ===================== DESKTOP ===================== -->
   <div id="desktop" class="hidden">
     <div id="wallpaper" aria-hidden="true">
+      <div id="wallpaper-overlay" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,0.25);z-index:1;pointer-events:none"></div>
       <svg viewBox="0 0 1200 700" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
@@ -98,28 +99,105 @@
       </button>
     </div>
 
-    <!-- Jam analog pojok kanan atas -->
+    <!-- Jam analog besar pojok kanan atas -->
     <div id="desktop-clock-widget">
-      <svg id="analog-clock" viewBox="0 0 56 56" xmlns="http://www.w3.org/2000/svg">
-        <circle class="clock-face" cx="28" cy="28" r="26"/>
-        <!-- Tick marks jam -->
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(0   28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(30  28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(60  28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(90  28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(120 28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(150 28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(180 28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(210 28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(240 28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(270 28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(300 28 28)"/>
-        <line class="clock-tick clock-tick-major" x1="28" y1="4"  x2="28" y2="9"  transform="rotate(330 28 28)"/>
-        <!-- Jarum -->
-        <line class="clock-hand-hour" x1="28" y1="28" x2="28" y2="14"/>
-        <line class="clock-hand-min"  x1="28" y1="28" x2="28" y2="9"/>
-        <line class="clock-hand-sec"  x1="28" y1="32" x2="28" y2="6"/>
-        <circle class="clock-center" cx="28" cy="28" r="2.5"/>
+      <svg id="analog-clock" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+        <!-- Bayangan luar -->
+        <circle cx="80" cy="82" r="72" fill="rgba(0,0,0,0.35)"/>
+        <!-- Ring luar -->
+        <circle class="clock-ring-outer" cx="80" cy="80" r="74"/>
+        <!-- Muka jam -->
+        <circle class="clock-face" cx="80" cy="80" r="70"/>
+        <!-- Ring dalam dekoratif -->
+        <circle class="clock-ring-inner" cx="80" cy="80" r="64"/>
+
+        <!-- Tick marks minor (60 posisi, tiap 6°) -->
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(6   80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(12  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(18  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(24  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(36  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(42  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(48  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(54  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(66  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(72  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(78  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(84  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(96  80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(102 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(108 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(114 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(126 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(132 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(138 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(144 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(156 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(162 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(168 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(174 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(186 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(192 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(198 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(204 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(216 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(222 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(228 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(234 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(246 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(252 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(258 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(264 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(276 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(282 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(288 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(294 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(306 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(312 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(318 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(324 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(336 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(342 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(348 80 80)"/>
+        <line class="clock-tick" x1="80" y1="10" x2="80" y2="17" transform="rotate(354 80 80)"/>
+
+        <!-- Tick marks major (tiap 30°) -->
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(0   80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(30  80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(60  80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(90  80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(120 80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(150 80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(180 80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(210 80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(240 80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(270 80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(300 80 80)"/>
+        <line class="clock-tick-major" x1="80" y1="8"  x2="80" y2="20" transform="rotate(330 80 80)"/>
+
+        <!-- Angka jam — posisi polar akurat -->
+        <text class="clock-num" x="80.0"  y="25.0" >12</text>
+        <text class="clock-num" x="107.5" y="32.4" >1</text>
+        <text class="clock-num" x="127.6" y="52.5" >2</text>
+        <text class="clock-num" x="135.0" y="80.0" >3</text>
+        <text class="clock-num" x="127.6" y="107.5">4</text>
+        <text class="clock-num" x="107.5" y="127.6">5</text>
+        <text class="clock-num" x="80.0"  y="135.0">6</text>
+        <text class="clock-num" x="52.5"  y="127.6">7</text>
+        <text class="clock-num" x="32.4"  y="107.5">8</text>
+        <text class="clock-num" x="25.0"  y="80.0" >9</text>
+        <text class="clock-num" x="32.4"  y="52.5" >10</text>
+        <text class="clock-num" x="52.5"  y="32.4" >11</text>
+
+        <!-- Jarum jam -->
+        <line class="clock-hand-hour" x1="80" y1="80" x2="80" y2="35"/>
+        <!-- Jarum menit -->
+        <line class="clock-hand-min"  x1="80" y1="80" x2="80" y2="18"/>
+        <!-- Jarum detik -->
+        <line class="clock-hand-sec"  x1="80" y1="95" x2="80" y2="14"/>
+        <!-- Titik tengah -->
+        <circle class="clock-center-outer" cx="80" cy="80" r="6"/>
+        <circle class="clock-center" cx="80" cy="80" r="3.5"/>
       </svg>
       <span id="desktop-date"></span>
     </div>

@@ -356,7 +356,7 @@ input { font-family: inherit; }
 }
 
 /* =======================================================================
-   JAM ANALOG — pojok kanan atas desktop
+   JAM ANALOG BESAR — pojok kanan atas (gaya Windows 7)
    ======================================================================= */
 
 #desktop-clock-widget {
@@ -367,58 +367,98 @@ input { font-family: inherit; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   pointer-events: none;
   user-select: none;
 }
 
 #analog-clock {
-  width: 56px;
-  height: 56px;
-  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+  width: 140px;
+  height: 140px;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.7));
 }
 
+/* Ring terluar — bingkai hitam tebal */
+.clock-ring-outer {
+  fill: none;
+  stroke: #1a1a1a;
+  stroke-width: 6;
+}
+
+/* Muka jam — putih bersih */
 .clock-face {
-  fill: rgba(16, 20, 27, 0.80);
-  stroke: rgba(255, 180, 84, 0.55);
-  stroke-width: 1.5;
+  fill: #f5f5f0;
+  stroke: #ddd;
+  stroke-width: 1;
 }
 
-.clock-tick {
-  stroke: rgba(255, 255, 255, 0.20);
+/* Ring dalam dekoratif */
+.clock-ring-inner {
+  fill: none;
+  stroke: rgba(0,0,0,0.12);
   stroke-width: 1;
+}
+
+/* Tick minor */
+.clock-tick {
+  stroke: rgba(0,0,0,0.3);
+  stroke-width: 1.2;
   stroke-linecap: round;
 }
-.clock-tick-major {
-  stroke: rgba(255, 180, 84, 0.55);
-  stroke-width: 1.5;
-}
 
-.clock-hand-hour {
-  stroke: #edf0f4;
+/* Tick major (tiap jam) */
+.clock-tick-major {
+  stroke: rgba(0,0,0,0.7);
   stroke-width: 2.5;
   stroke-linecap: round;
 }
-.clock-hand-min {
-  stroke: #edf0f4;
-  stroke-width: 1.8;
+
+/* Angka jam */
+.clock-num {
+  font-family: 'Times New Roman', 'Georgia', serif;
+  font-size: 13px;
+  font-weight: 400;
+  fill: #111;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+/* Jarum jam — hitam tebal */
+.clock-hand-hour {
+  stroke: #111;
+  stroke-width: 5;
   stroke-linecap: round;
 }
-.clock-hand-sec {
-  stroke: #ffb454;
-  stroke-width: 1;
+
+/* Jarum menit — hitam tipis */
+.clock-hand-min {
+  stroke: #111;
+  stroke-width: 3;
   stroke-linecap: round;
+}
+
+/* Jarum detik — merah */
+.clock-hand-sec {
+  stroke: #cc2200;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* Titik tengah */
+.clock-center-outer {
+  fill: #cc2200;
 }
 .clock-center {
-  fill: #ffb454;
+  fill: #fff;
 }
 
 #desktop-date {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: rgba(255,255,255,0.72);
-  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
-  letter-spacing: 0.04em;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.88);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.8);
+  letter-spacing: 0.03em;
   white-space: nowrap;
 }
 
@@ -527,12 +567,5 @@ input { font-family: inherit; }
   justify-content: space-between;
 }
 
-/* Overlay tipis agar ikon tetap terbaca di atas foto cerah */
-#wallpaper::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.22);
-  pointer-events: none;
-}
+/* Overlay dihandle via #wallpaper-overlay div di HTML */
 
