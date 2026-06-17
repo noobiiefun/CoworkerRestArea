@@ -1,3 +1,8 @@
+<img width="1254" height="1254" alt="Coworker Rest Area" src="https://github.com/user-attachments/assets/81322afd-4d52-41db-82c2-0d7126bf37b4" />
+
+
+
+
 # Coworker Rest Area 🛎️
 
 Ruang istirahat virtual untuk para pekerja di jaringan LAN kantor. Tampilan
