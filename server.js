@@ -178,22 +178,25 @@ function broadcastTheaterRoomList() {
 // Scan upload dir saat boot — rebuild videoLibrary & theater rooms
 (function scanVideos() {
   if (!fs.existsSync(UPLOAD_DIR)) return;
-  const files = fs.readdirSync(UPLOAD_DIR);
+  const files = fs.readdirSync(UPLOAD_DIR).filter(f => f !== '.gitkeep');
   files.forEach(f => {
     const fullPath = path.join(UPLOAD_DIR, f);
     const stat = fs.statSync(fullPath);
+    // Timestamp upload ada di awal nama file (format: <timestamp>_<filename>)
+    const tsMatch = f.match(/^(\d+)_/);
+    const uploadedAt = tsMatch ? parseInt(tsMatch[1], 10) : stat.mtimeMs;
     const meta = {
       id: 'v_' + f.split('_')[0],
       filename: f.replace(/^\d+_/, ''),
       url: '/uploads/' + f,
       size: stat.size,
-      uploadedAt: stat.mtimeMs,
+      uploadedAt,
       uploaderId: null,
       uploaderName: 'Anonim'
     };
     videoLibrary.push(meta);
 
-    // Buat/cari ruangan untuk video ini — satu ruangan per file (tanpa info uploader saat boot)
+    // Buat ruangan untuk video ini
     const rid = 'tr_boot_' + meta.id;
     if (!theaterRooms.has(rid)) {
       const tr = makeTheaterRoom(rid, `📺 ${meta.uploaderName}`, null);
@@ -206,6 +209,56 @@ function broadcastTheaterRoomList() {
 function makeId(prefix = '') {
   return prefix + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
+// ---------------------------------------------------------------------------
+// Auto-delete video yang sudah > 7 hari
+// ---------------------------------------------------------------------------
+const VIDEO_TTL_DAYS = 7;
+const VIDEO_TTL_MS = VIDEO_TTL_DAYS * 24 * 60 * 60 * 1000;
+
+function deleteExpiredVideos() {
+  const now = Date.now();
+  const expired = videoLibrary.filter(v => (now - v.uploadedAt) > VIDEO_TTL_MS);
+  if (expired.length === 0) return;
+
+  expired.forEach(v => {
+    console.log(`[auto-delete] Video kadaluarsa: ${v.filename} (${VIDEO_TTL_DAYS} hari)`);
+
+    // Hapus file dari disk
+    const filePath = path.join(__dirname, 'public', v.url);
+    fs.unlink(filePath, (err) => {
+      if (err && err.code !== 'ENOENT') console.error('[auto-delete] Gagal hapus file:', err.message);
+    });
+
+    // Hapus dari videoLibrary
+    const idx = videoLibrary.findIndex(x => x.id === v.id);
+    if (idx !== -1) videoLibrary.splice(idx, 1);
+
+    // Hapus/kosongkan theater room yang memakai video ini
+    theaterRooms.forEach((tr, rid) => {
+      if (tr.currentVideo && tr.currentVideo.id === v.id) {
+        tr.currentVideo = null;
+        tr.isPlaying = false;
+        tr.currentTime = 0;
+        if (tr.memberIds.size === 0) {
+          theaterRooms.delete(rid);
+        } else {
+          io.to(rid).emit('theater:state', theaterStateForClient(tr));
+          io.to(rid).emit('theater:video-removed', v.id);
+        }
+      }
+    });
+
+    io.emit('theater:video-removed', v.id);
+  });
+
+  broadcastTheaterRoomList();
+  console.log('[auto-delete] ' + expired.length + ' video dihapus.');
+}
+
+// Jalankan saat server start dan setiap 6 jam
+deleteExpiredVideos();
+setInterval(deleteExpiredVideos, 6 * 60 * 60 * 1000);
+
 
 rooms.set('lobby', {
   id: 'lobby', name: 'Lobby Utama', type: 'public',
