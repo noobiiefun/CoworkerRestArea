@@ -41,10 +41,6 @@
     return `
 <div class="theater-root" id="theater-root">
 
-  <!-- Video element GLOBAL — di luar panel agar selalu ada di DOM -->
-  <video id="theater-video" preload="metadata" playsinline
-    style="display:none;position:absolute;width:0;height:0;pointer-events:none;opacity:0"></video>
-
   <!-- ======== LOBBY: daftar ruangan (1 ruangan per pengupload) ======== -->
   <div class="theater-lobby" id="theater-lobby">
     <div class="theater-lobby-header">
@@ -59,12 +55,19 @@
           <polyline points="17 8 12 3 7 8"/>
           <line x1="12" y1="3" x2="12" y2="15"/>
         </svg>
-        Upload Video (Buat Ruanganku)
+        Upload Video
       </button>
       <input type="file" id="theater-file-input" accept="video/*" style="display:none">
       <div class="theater-upload-progress" id="theater-upload-progress" style="display:none">
         <div class="theater-upload-bar"><div class="theater-upload-fill" id="theater-upload-fill"></div></div>
         <span id="theater-upload-label">Mengupload…</span>
+      </div>
+      <div class="theater-yt-row">
+        <span class="theater-yt-label">atau tonton dari YouTube:</span>
+        <div class="theater-yt-input-row">
+          <input type="text" id="theater-yt-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off">
+          <button class="theater-upload-btn" id="theater-yt-btn">▶ Buat Ruangan YT</button>
+        </div>
       </div>
     </div>
     <!-- Kartu ruangan -->
@@ -109,6 +112,13 @@
           <div class="theater-upload-bar"><div class="theater-upload-fill" id="theater-upload-fill-room"></div></div>
           <span id="theater-upload-label-room">Mengupload…</span>
         </div>
+        <!-- Input ganti link YouTube di dalam room -->
+        <div class="theater-room-yt-row">
+          <div class="theater-yt-input-row">
+            <input type="text" id="theater-room-yt-input" placeholder="Ganti link YouTube…" autocomplete="off">
+            <button class="theater-upload-btn" id="theater-room-yt-btn">▶</button>
+          </div>
+        </div>
         <div class="theater-video-list" id="theater-video-list">
           <div class="theater-empty-hint">Belum ada video.</div>
         </div>
@@ -121,7 +131,15 @@
             <div class="theater-no-video-icon">🎬</div>
             <div class="theater-no-video-text">Pilih video dari daftar untuk mulai nonton bareng</div>
           </div>
-          <div id="theater-video-slot" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#000"></div>
+          <!-- Video dan iframe selalu di dalam slot dari awal -->
+          <div id="theater-video-slot" style="position:absolute;inset:0;background:#000;">
+            <video id="theater-video" preload="metadata" playsinline
+              style="display:none;width:100%;height:100%;object-fit:contain;position:absolute;inset:0;"></video>
+            <iframe id="theater-yt-frame"
+              style="display:none;position:absolute;inset:0;width:100%;height:100%;border:none;"
+              allow="autoplay; fullscreen"
+              allowfullscreen></iframe>
+          </div>
           <div class="theater-reaction-overlay" id="theater-reaction-overlay"></div>
         </div>
 
@@ -172,10 +190,8 @@
     _container = container;
     container.innerHTML = renderHTML();
 
-    // Video element ada di luar panel system (fix: mobile tidak tampil video)
+    // Video dan iframe ada DI DALAM slot (fix mobile: video tidak tampil)
     videoEl = container.querySelector('#theater-video');
-    // Style video untuk saat ditampilkan
-    videoEl.style.cssText = 'display:none;width:100%;height:100%;object-fit:contain;background:#000;position:absolute;top:0;left:0;';
 
     socket = window._theaterSocket || (window.io ? window.io() : null);
     if (!socket && typeof io !== 'undefined') socket = io();
@@ -215,6 +231,52 @@
     socket.on('theater:video-removed', (videoId) => {
       videos = videos.filter(v => v.id !== videoId);
       renderVideoList(container);
+      // Jika video yang dihapus adalah yang sedang aktif, reset player
+      if (currentState.currentVideo?.id === videoId) {
+        currentState.currentVideo = null;
+        currentState.isPlaying = false;
+        if (videoEl) {
+          suppressSync = true;
+          videoEl.pause();
+          videoEl.src = '';
+          videoEl.style.display = 'none';
+          suppressSync = false;
+        }
+        const noVid = container.querySelector('#theater-no-video');
+        if (noVid) noVid.style.display = 'flex';
+        const playBtn = container.querySelector('#theater-play-btn');
+        const progressEl = container.querySelector('#theater-progress');
+        if (playBtn) playBtn.disabled = true;
+        if (progressEl) { progressEl.disabled = true; progressEl.value = 0; }
+      }
+    });
+
+    // Jika ruangan dihapus (semua video di-delete), kembalikan ke lobby
+    socket.on('theater:room-deleted', (roomId) => {
+      theaterRoomsList = theaterRoomsList.filter(r => r.id !== roomId);
+      if (currentRoomId === roomId) {
+        // Paksa keluar ke lobby
+        currentRoomId = null;
+        currentRoomName = null;
+        viewers = [];
+        theaterMessages = [];
+        videos = [];
+        if (videoEl) {
+          suppressSync = true;
+          videoEl.pause();
+          videoEl.src = '';
+          videoEl.style.display = 'none';
+          suppressSync = false;
+        }
+        const lobby = container.querySelector('#theater-lobby');
+        const watch = container.querySelector('#theater-watch');
+        if (watch) watch.style.display = 'none';
+        if (lobby) lobby.style.display = 'flex';
+        renderRoomsList(container);
+        alert('Ruangan ini telah dihapus karena semua videonya dihapus.');
+      } else {
+        renderRoomsList(container);
+      }
     });
 
     socket.on('theater:init', ({ state, videos: vids, viewers: vs, messages }) => {
@@ -273,6 +335,10 @@
       showFloatingReaction(container, emoji, nickname);
     });
 
+    socket.on('theater:yt-room-created', ({ roomId, roomName }) => {
+      joinTheaterRoom(container, roomId, roomName);
+    });
+
     socket.on('theater:error', (msg) => {
       alert('Theater error: ' + msg);
     });
@@ -298,7 +364,7 @@
   // Lobby: daftar ruangan & upload
   // -------------------------------------------------------------------------
   function bindLobby(container) {
-    // Tombol upload di lobby — buat/update ruangan pengupload otomatis
+    // Upload file
     const lobbyUploadBtn = container.querySelector('#theater-lobby-upload-btn');
     const fileInput = container.querySelector('#theater-file-input');
     lobbyUploadBtn?.addEventListener('click', () => fileInput?.click());
@@ -311,7 +377,6 @@
         labelId: '#theater-upload-label',
         fileInput,
         onDone: (result) => {
-          // Otomatis masuk ke ruangan pengupload setelah upload
           if (result.theaterRoomId) {
             joinTheaterRoom(container, result.theaterRoomId, meUser.nickname + "'s Room");
           }
@@ -319,9 +384,47 @@
       });
     });
 
+    // YouTube URL
+    container.querySelector('#theater-yt-btn')?.addEventListener('click', () => {
+      const input = container.querySelector('#theater-yt-input');
+      const url = input?.value?.trim();
+      if (!url) return;
+      const ytId = extractYouTubeId(url);
+      if (!ytId) { alert('URL YouTube tidak valid. Contoh: https://youtube.com/watch?v=xxxx'); return; }
+      socket.emit('theater:create-yt-room', {
+        ytId,
+        ytUrl: url,
+        uploaderName: meUser?.nickname || 'Anonim',
+        uploaderId: meUser?.id || ''
+      });
+      if (input) input.value = '';
+    });
+    container.querySelector('#theater-yt-input')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') container.querySelector('#theater-yt-btn')?.click();
+    });
+
     container.querySelector('#theater-back-btn')?.addEventListener('click', () => {
       leaveRoom(container);
     });
+  }
+
+  function extractYouTubeId(url) {
+    try {
+      const u = new URL(url);
+      // youtube.com/watch?v=ID
+      if (u.hostname.includes('youtube.com')) {
+        const v = u.searchParams.get('v');
+        if (v) return v;
+        // youtube.com/live/ID atau /shorts/ID
+        const parts = u.pathname.split('/').filter(Boolean);
+        if (parts.length >= 2 && ['live','shorts','embed'].includes(parts[0])) return parts[1];
+      }
+      // youtu.be/ID
+      if (u.hostname === 'youtu.be') return u.pathname.slice(1).split('?')[0];
+    } catch(e) {}
+    // fallback: coba regex
+    const m = url.match(/(?:v=|youtu\.be\/|\/embed\/|\/live\/|\/shorts\/)([a-zA-Z0-9_-]{11})/);
+    return m ? m[1] : null;
   }
 
   // Upload helper — bisa dipakai dari lobby maupun dari dalam ruangan
@@ -380,18 +483,21 @@
             ${tr.isPlaying ? ' · ▶ Sedang diputar' : ''}
           </div>
         </div>
-        <button class="theater-room-join-btn" data-id="${tr.id}">
+        <button class="theater-room-join-btn ${tr.id === currentRoomId ? 'is-here' : ''}" data-id="${tr.id}">
           ${tr.id === currentRoomId ? '✓ Di sini' : 'Masuk'}
         </button>
       </div>
     `).join('');
 
     el.querySelectorAll('.theater-room-join-btn').forEach(btn => {
-      if (btn.textContent.trim() === '✓ Di sini') return;
+      // Semua tombol bisa diklik — termasuk "Di sini" (untuk rejoin jika koneksi bermasalah)
       btn.addEventListener('click', () => {
         const card = btn.closest('.theater-room-card');
         const rid = card.dataset.id;
         const rname = card.querySelector('.theater-room-card-name').textContent;
+        // Jika sudah di room ini dan tampilan watch sudah aktif, tidak perlu join ulang
+        const watchEl = container.querySelector('#theater-watch');
+        if (rid === currentRoomId && watchEl && watchEl.style.display !== 'none') return;
         joinTheaterRoom(container, rid, rname);
       });
     });
@@ -488,34 +594,7 @@
     container.querySelectorAll('.theater-panel').forEach(panel => {
       panel.classList.toggle('active', panel.dataset.panel === tab);
     });
-
-    // Saat tab player aktif: pindahkan video ke dalam slot agar tampil
-    // Saat tab lain: sembunyikan tapi jangan hapus dari DOM (agar tetap bisa play audio & sync)
-    const slot = container.querySelector('#theater-video-slot');
-    if (!slot || !videoEl) return;
-
-    if (tab === 'player') {
-      // Pindahkan video ke dalam slot, buat visible
-      slot.style.position = 'relative';
-      if (videoEl.parentElement !== slot) slot.appendChild(videoEl);
-      videoEl.style.position = 'absolute';
-      videoEl.style.top = '0';
-      videoEl.style.left = '0';
-      videoEl.style.width = '100%';
-      videoEl.style.height = '100%';
-      videoEl.style.objectFit = 'contain';
-      videoEl.style.background = '#000';
-      // Tampilkan hanya jika ada video yang dipilih
-      if (currentState.currentVideo) {
-        videoEl.style.display = 'block';
-        videoEl.style.opacity = '1';
-        videoEl.style.pointerEvents = 'auto';
-      }
-    } else {
-      // Sembunyikan secara visual tapi tetap di DOM untuk audio tetap jalan
-      videoEl.style.opacity = '0';
-      videoEl.style.pointerEvents = 'none';
-    }
+    // Video sudah permanen di dalam slot — tidak perlu dipindahkan
   }
 
   // -------------------------------------------------------------------------
@@ -545,21 +624,45 @@
     const playBtn = cont?.querySelector('#theater-play-btn');
     const progressEl = cont?.querySelector('#theater-progress');
     const slot = cont?.querySelector('#theater-video-slot');
+    const ytFrame = cont?.querySelector('#theater-yt-frame');
 
     if (state.currentVideo) {
+      const isYT = !!state.currentVideo.ytId;
+
+      if (isYT) {
+        // Mode YouTube — sembunyikan video biasa, tampilkan iframe
+        if (videoEl) {
+          suppressSync = true;
+          videoEl.pause();
+          videoEl.src = '';
+          videoEl.style.display = 'none';
+          suppressSync = false;
+        }
+        if (noVideoEl) noVideoEl.style.display = 'none';
+        if (ytFrame) {
+          const embedUrl = `https://www.youtube-nocookie.com/embed/${state.currentVideo.ytId}?autoplay=1&rel=0`;
+          if (ytFrame.getAttribute('data-yt-id') !== state.currentVideo.ytId) {
+            ytFrame.setAttribute('data-yt-id', state.currentVideo.ytId);
+            ytFrame.src = embedUrl;
+          }
+          ytFrame.style.display = 'block';
+        }
+        if (playBtn) playBtn.disabled = true;
+        if (progressEl) { progressEl.disabled = true; progressEl.value = 0; }
+        const timeEl = cont?.querySelector('#theater-time');
+        if (timeEl) timeEl.textContent = '▶ YouTube Live';
+        renderVideoList(cont);
+        return;
+      }
+
+      // Mode video file
+      if (ytFrame) { ytFrame.style.display = 'none'; ytFrame.src = ''; ytFrame.removeAttribute('data-yt-id'); }
+
       const newSrc = window.location.origin + state.currentVideo.url;
       if (videoEl.src !== newSrc) {
         suppressSync = true;
-        // Tampilkan video — di desktop langsung di wrap, di mobile masuk slot
         if (noVideoEl) noVideoEl.style.display = 'none';
-        // Pastikan video masuk slot jika di mobile
-        if (slot && videoEl.parentElement !== slot) {
-          slot.style.position = 'relative';
-          slot.appendChild(videoEl);
-        }
         videoEl.style.display = 'block';
-        videoEl.style.opacity = isMobile() && mobileTab !== 'player' ? '0' : '1';
-        videoEl.style.pointerEvents = isMobile() && mobileTab !== 'player' ? 'none' : 'auto';
         videoEl.src = state.currentVideo.url;
         videoEl.load();
         videoEl.addEventListener('loadedmetadata', () => {
@@ -585,7 +688,13 @@
       updatePlayIcon(state.isPlaying, cont);
       renderVideoList(cont);
     } else {
-      videoEl.style.display = 'none';
+      if (ytFrame) { ytFrame.style.display = 'none'; ytFrame.src = ''; }
+      if (videoEl) {
+        suppressSync = true;
+        videoEl.pause();
+        videoEl.style.display = 'none';
+        suppressSync = false;
+      }
       if (noVideoEl) noVideoEl.style.display = 'flex';
       if (playBtn) playBtn.disabled = true;
       if (progressEl) progressEl.disabled = true;
@@ -729,8 +838,25 @@
         fillId: '#theater-upload-fill-room',
         labelId: '#theater-upload-label-room',
         fileInput,
-        onDone: () => {} // video-added socket event akan update list otomatis
+        onDone: () => {}
       });
+    });
+
+    // Ganti link YouTube di dalam room
+    const roomYtBtn = container.querySelector('#theater-room-yt-btn');
+    const roomYtInput = container.querySelector('#theater-room-yt-input');
+    roomYtBtn?.addEventListener('click', () => {
+      const url = roomYtInput?.value?.trim();
+      if (!url) return;
+      const ytId = extractYouTubeId(url);
+      if (!ytId) { alert('URL YouTube tidak valid'); return; }
+      socket.emit('theater:change-yt-video', { ytId, ytUrl: url });
+      if (roomYtInput) roomYtInput.value = '';
+      // Pindah ke tab player di mobile
+      if (isMobile()) switchMobileTab(container, 'player');
+    });
+    roomYtInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') roomYtBtn?.click();
     });
   }
 

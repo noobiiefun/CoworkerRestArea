@@ -649,3 +649,92 @@
   width: 100vw;
   height: 100vh;
 }
+
+/* =======================================================================
+   YouTube input row di lobby
+   ======================================================================= */
+.theater-yt-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.theater-yt-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.theater-yt-input-row {
+  display: flex;
+  gap: 6px;
+}
+.theater-yt-input-row input {
+  flex: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  font-size: 11px;
+  outline: none;
+  font-family: var(--font-body);
+}
+.theater-yt-input-row input:focus { border-color: var(--amber-dim); }
+.theater-yt-input-row input::placeholder { color: var(--text-faint); }
+
+/* Room card badge YouTube */
+.theater-room-join-btn.is-here {
+  background: var(--panel-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  cursor: default;
+}
+
+/* YouTube input di dalam room (panel daftar video) */
+.theater-room-yt-row {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.theater-room-yt-row .theater-yt-input-row {
+  display: flex;
+  gap: 4px;
+}
+.theater-room-yt-row input {
+  flex: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 5px 7px;
+  font-size: 11px;
+  outline: none;
+  font-family: var(--font-body);
+  min-width: 0;
+}
+.theater-room-yt-row input:focus { border-color: var(--amber-dim); }
+.theater-room-yt-row input::placeholder { color: var(--text-faint); }
+.theater-room-yt-row .theater-upload-btn { padding: 5px 8px; flex-shrink: 0; }
+
+/* Player wrap: pastikan posisi relatif untuk video di dalamnya */
+.theater-player-wrap {
+  position: relative;
+}
+#theater-video-slot {
+  position: absolute;
+  inset: 0;
+  background: #000;
+}
+#theater-video-slot video,
+#theater-video-slot iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+#theater-video-slot video {
+  object-fit: contain;
+  background: #000;
+}

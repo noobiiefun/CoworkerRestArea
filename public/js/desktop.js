@@ -291,21 +291,37 @@ const Desktop = (() => {
       const overlay = document.getElementById('wallpaper-overlay');
       if (!wp) return;
       try { localStorage.setItem('cra_wallpaper', src); } catch(e) {}
+
       if (src === 'default') {
-        wp.style.backgroundImage = '';
-        wp.style.backgroundSize  = '';
-        wp.style.backgroundPosition = '';
+        const oldImg = document.getElementById('wallpaper-img');
+        if (oldImg) oldImg.remove();
         const svg = wp.querySelector('svg');
         if (svg) svg.style.display = '';
         if (overlay) overlay.style.display = 'none';
         return;
       }
-      // Sembunyikan SVG, tampilkan gambar
+
+      // Sembunyikan SVG default
       const svg = wp.querySelector('svg');
       if (svg) svg.style.display = 'none';
-      wp.style.cssText += ';background-image:url("' + src + '") !important;background-size:cover !important;background-position:center !important;background-repeat:no-repeat !important;';
-      // Overlay tipis agar ikon tetap terbaca
       if (overlay) overlay.style.display = 'block';
+
+      // Gunakan <img> tag agar browser bisa load URL manapun
+      let imgEl = document.getElementById('wallpaper-img');
+      if (!imgEl) {
+        imgEl = document.createElement('img');
+        imgEl.id = 'wallpaper-img';
+        imgEl.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;';
+        wp.insertBefore(imgEl, wp.firstChild);
+      }
+      imgEl.onerror = () => {
+        imgEl.remove();
+        if (svg) svg.style.display = '';
+        if (overlay) overlay.style.display = 'none';
+        try { localStorage.removeItem('cra_wallpaper'); } catch(e) {}
+        alert('⚠️ Gambar tidak bisa dimuat.\n\nTips: Klik kanan gambar di Google → "Buka gambar di tab baru" → copy URL dari address bar browser (bukan dari pencarian Google).');
+      };
+      imgEl.src = src;
     }
 
     // Restore wallpaper dari localStorage saat load

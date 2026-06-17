@@ -104,6 +104,16 @@ app.delete('/api/video/:id', (req, res) => {
   const filePath = path.join(__dirname, 'public', vid.url);
   fs.unlink(filePath, () => {});
   io.emit('theater:video-removed', vid.id);
+
+  // Hapus theater room yang video aktifnya adalah video ini
+  theaterRooms.forEach((tr, rid) => {
+    if (tr.currentVideo && tr.currentVideo.id === vid.id) {
+      io.to(rid).emit('theater:room-deleted', rid);
+      theaterRooms.delete(rid);
+    }
+  });
+
+  broadcastTheaterRoomList();
   res.json({ ok: true });
 });
 
@@ -139,7 +149,8 @@ function makeTheaterRoom(id, name, creatorId) {
     currentTime: 0,
     lastSyncAt: Date.now(),
     messages: [],
-    memberIds: new Set()
+    memberIds: new Set(),
+    lastEmptyAt: null  // waktu room pertama kali jadi kosong (untuk auto-delete)
   };
 }
 // Tidak ada ruangan default — ruangan dibuat otomatis saat pengupload upload video
@@ -164,14 +175,26 @@ function theaterStateForClient(tr) {
 }
 
 function broadcastTheaterRoomList() {
-  const list = Array.from(theaterRooms.values()).map(tr => ({
-    id: tr.id,
-    name: tr.name,
-    creatorId: tr.creatorId,
-    memberCount: tr.memberIds.size,
-    currentVideoName: tr.currentVideo?.filename || null,
-    isPlaying: tr.isPlaying
-  }));
+  const list = Array.from(theaterRooms.values()).map(tr => {
+    let videoName = null;
+    if (tr.currentVideo) {
+      if (tr.currentVideo.ytId) {
+        // Tampilkan nama/judul yang lebih bersih untuk YouTube
+        videoName = tr.currentVideo.title || `▶ youtube.com/watch?v=${tr.currentVideo.ytId}`;
+      } else {
+        videoName = tr.currentVideo.filename;
+      }
+    }
+    return {
+      id: tr.id,
+      name: tr.name,
+      creatorId: tr.creatorId,
+      memberCount: tr.memberIds.size,
+      currentVideoName: videoName,
+      isPlaying: tr.isPlaying,
+      isYT: !!(tr.currentVideo?.ytId)
+    };
+  });
   io.emit('theater:rooms-list', list);
 }
 
@@ -209,6 +232,33 @@ function broadcastTheaterRoomList() {
 function makeId(prefix = '') {
   return prefix + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 }
+// ---------------------------------------------------------------------------
+// Auto-delete theater room yang kosong > 20 menit
+// ---------------------------------------------------------------------------
+const ROOM_EMPTY_TTL_MS = 20 * 60 * 1000;
+
+function checkEmptyRooms() {
+  const now = Date.now();
+  theaterRooms.forEach((tr, rid) => {
+    if (tr.memberIds.size > 0) {
+      tr.lastEmptyAt = null;
+      return;
+    }
+    if (tr.lastEmptyAt == null) {
+      tr.lastEmptyAt = now;
+      return;
+    }
+    if ((now - tr.lastEmptyAt) >= ROOM_EMPTY_TTL_MS) {
+      console.log('[auto-delete room] "' + tr.name + '" kosong 20 menit, dihapus.');
+      io.to(rid).emit('theater:room-deleted', rid);
+      theaterRooms.delete(rid);
+    }
+  });
+  broadcastTheaterRoomList();
+}
+
+setInterval(checkEmptyRooms, 2 * 60 * 1000);
+
 // ---------------------------------------------------------------------------
 // Auto-delete video yang sudah > 7 hari
 // ---------------------------------------------------------------------------
@@ -410,6 +460,51 @@ io.on('connection', (socket) => {
       isPlaying: tr.isPlaying
     })));
     socket.emit('theater:videos-list', videoLibrary);
+  });
+
+  /** Buat theater room dari YouTube URL */
+  socket.on('theater:create-yt-room', ({ ytId, ytUrl, uploaderName, uploaderId }) => {
+    if (!ytId) { socket.emit('theater:error', 'YouTube ID tidak valid'); return; }
+    const rid = makeId('tr_yt_');
+    const roomName = `🎬 ${uploaderName || 'Anonim'}`;
+    const tr = makeTheaterRoom(rid, roomName, socket.id);
+    tr.uploaderId = uploaderId || socket.id;
+    tr.uploaderName = uploaderName || 'Anonim';
+    tr.currentVideo = {
+      id: 'yt_' + ytId,
+      filename: `YouTube: ${ytId}`,
+      title: `▶ ${ytId}`,  // akan diupdate jika ada judul
+      url: ytUrl,
+      ytId,
+      size: 0,
+      uploadedAt: Date.now()
+    };
+    tr.lastEmptyAt = null; // belum pernah kosong
+    theaterRooms.set(rid, tr);
+    broadcastTheaterRoomList();
+    socket.emit('theater:yt-room-created', { roomId: rid, roomName });
+  });
+
+  /** Ganti video YouTube di room yang sedang diikuti */
+  socket.on('theater:change-yt-video', ({ ytId, ytUrl }) => {
+    if (!user.theaterRoomId) return;
+    const tr = theaterRooms.get(user.theaterRoomId);
+    if (!tr) return;
+    tr.currentVideo = {
+      id: 'yt_' + ytId,
+      filename: `YouTube: ${ytId}`,
+      title: `▶ ${ytId}`,
+      url: ytUrl,
+      ytId,
+      size: 0,
+      uploadedAt: Date.now()
+    };
+    tr.isPlaying = false;
+    tr.currentTime = 0;
+    tr.lastSyncAt = Date.now();
+    tr.hostId = socket.id;
+    io.to(tr.id).emit('theater:state', theaterStateForClient(tr));
+    broadcastTheaterRoomList();
   });
 
   /** Masuk ke theater room tertentu */
