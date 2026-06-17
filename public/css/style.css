@@ -354,3 +354,185 @@ input { font-family: inherit; }
 @media (max-width: 720px) {
   .chat-sidebar { width: 180px; }
 }
+
+/* =======================================================================
+   JAM ANALOG — pojok kanan atas desktop
+   ======================================================================= */
+
+#desktop-clock-widget {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+  user-select: none;
+}
+
+#analog-clock {
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+}
+
+.clock-face {
+  fill: rgba(16, 20, 27, 0.80);
+  stroke: rgba(255, 180, 84, 0.55);
+  stroke-width: 1.5;
+}
+
+.clock-tick {
+  stroke: rgba(255, 255, 255, 0.20);
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+.clock-tick-major {
+  stroke: rgba(255, 180, 84, 0.55);
+  stroke-width: 1.5;
+}
+
+.clock-hand-hour {
+  stroke: #edf0f4;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+.clock-hand-min {
+  stroke: #edf0f4;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.clock-hand-sec {
+  stroke: #ffb454;
+  stroke-width: 1;
+  stroke-linecap: round;
+}
+.clock-center {
+  fill: #ffb454;
+}
+
+#desktop-date {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255,255,255,0.72);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* =======================================================================
+   WALLPAPER CHANGER
+   ======================================================================= */
+
+#wallpaper-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+#wallpaper-btn:hover {
+  background: var(--panel-2);
+  border-color: var(--amber-dim);
+  color: var(--amber);
+}
+
+#wallpaper-panel {
+  position: fixed;
+  z-index: 9998;
+  width: 280px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-window);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  top: 64px;
+  right: 16px;
+}
+#wallpaper-panel.hidden { display: none; }
+
+.wp-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--amber);
+  margin: 0 0 2px;
+}
+.wp-panel-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0 0 5px;
+}
+.wp-url-row {
+  display: flex;
+  gap: 6px;
+}
+.wp-url-row input {
+  flex: 1;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 6px 9px;
+  font-size: 12px;
+  outline: none;
+  font-family: var(--font-body);
+}
+.wp-url-row input:focus { border-color: var(--amber-dim); }
+.wp-url-row input::placeholder { color: var(--text-faint); }
+
+.wp-btn {
+  background: var(--amber);
+  color: #1a1206;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 11px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+.wp-btn:hover { background: #ffc04a; }
+
+.wp-btn-ghost {
+  background: var(--panel-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 11px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+.wp-btn-ghost:hover { background: var(--panel-3); color: var(--text); }
+
+.wp-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2px 0;
+}
+.wp-bottom-row {
+  display: flex;
+  gap: 6px;
+  justify-content: space-between;
+}
+
+/* Overlay tipis agar ikon tetap terbaca di atas foto cerah */
+#wallpaper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.22);
+  pointer-events: none;
+}
+

@@ -1,5 +1,9 @@
 node_modules/
 npm-debug.log*
 .DS_Store
-public/uploads/
 *.log
+
+# Folder upload video — jangan masuk ke Git
+public/uploads/*
+# Tapi tetap track folder kosongnya
+!public/uploads/.gitkeep

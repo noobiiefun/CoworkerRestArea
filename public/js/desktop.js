@@ -246,13 +246,138 @@ const Desktop = (() => {
       });
     });
 
-    const clockEl = document.getElementById('clock');
-    function tick() {
-      const now = new Date();
-      clockEl.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    // ---- Jam analog + tanggal (pojok kanan atas) ----
+    const clockWidget = document.getElementById('desktop-clock-widget');
+    if (clockWidget) {
+      function tickClock() {
+        const now = new Date();
+        const h = now.getHours() % 12;
+        const m = now.getMinutes();
+        const s = now.getSeconds();
+        // Jarum
+        const secDeg  = s * 6;
+        const minDeg  = m * 6 + s * 0.1;
+        const hourDeg = h * 30 + m * 0.5;
+        const secsHand  = clockWidget.querySelector('.clock-hand-sec');
+        const minsHand  = clockWidget.querySelector('.clock-hand-min');
+        const hoursHand = clockWidget.querySelector('.clock-hand-hour');
+        if (secsHand)  secsHand.setAttribute('transform',  `rotate(${secDeg},  28, 28)`);
+        if (minsHand)  minsHand.setAttribute('transform',  `rotate(${minDeg},  28, 28)`);
+        if (hoursHand) hoursHand.setAttribute('transform', `rotate(${hourDeg}, 28, 28)`);
+        // Tanggal
+        const dateEl = document.getElementById('desktop-date');
+        if (dateEl) {
+          dateEl.textContent = now.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+        }
+      }
+      tickClock();
+      setInterval(tickClock, 1000);
     }
-    tick();
-    setInterval(tick, 15000);
+
+    // Tetap update #clock di taskbar (hidden tapi dipakai komponen lain)
+    const clockEl = document.getElementById('clock');
+    if (clockEl) {
+      function tick() {
+        const now = new Date();
+        clockEl.textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      }
+      tick();
+      setInterval(tick, 15000);
+    }
+
+    // ---- Wallpaper changer ----
+    function applyWallpaper(src) {
+      const wp = document.getElementById('wallpaper');
+      if (!wp) return;
+      // Simpan ke localStorage agar persist
+      try { localStorage.setItem('cra_wallpaper', src); } catch(e) {}
+      if (src === 'default') {
+        wp.style.backgroundImage = '';
+        wp.style.backgroundSize = '';
+        wp.style.backgroundPosition = '';
+        const svg = wp.querySelector('svg');
+        if (svg) svg.style.display = '';
+        return;
+      }
+      // Sembunyikan SVG default, tampilkan gambar
+      const svg = wp.querySelector('svg');
+      if (svg) svg.style.display = 'none';
+      wp.style.backgroundImage = `url('${src}')`;
+      wp.style.backgroundSize = 'cover';
+      wp.style.backgroundPosition = 'center';
+    }
+
+    // Restore wallpaper dari localStorage saat load
+    try {
+      const saved = localStorage.getItem('cra_wallpaper');
+      if (saved) applyWallpaper(saved);
+    } catch(e) {}
+
+    // Panel ganti wallpaper
+    const wpPanel = document.getElementById('wallpaper-panel');
+    const wpInput = document.getElementById('wallpaper-url-input');
+    const wpFileInput = document.getElementById('wallpaper-file-input');
+
+    function openWallpaperPanel() {
+      if (wpPanel) wpPanel.classList.toggle('hidden');
+    }
+
+    // Tombol di taskbar
+    document.getElementById('wallpaper-btn')?.addEventListener('click', openWallpaperPanel);
+
+    // Klik kanan desktop
+    document.getElementById('desktop')?.addEventListener('contextmenu', (e) => {
+      // Jangan intercept klik kanan di dalam window
+      if (e.target.closest('.window')) return;
+      e.preventDefault();
+      if (wpPanel) {
+        wpPanel.classList.remove('hidden');
+        // Posisikan di dekat kursor
+        wpPanel.style.left = Math.min(e.clientX, window.innerWidth - 300) + 'px';
+        wpPanel.style.top  = Math.min(e.clientY, window.innerHeight - 200) + 'px';
+      }
+    });
+
+    // Tutup panel saat klik di luar
+    document.addEventListener('click', (e) => {
+      if (wpPanel && !wpPanel.contains(e.target) &&
+          e.target.id !== 'wallpaper-btn') {
+        wpPanel.classList.add('hidden');
+      }
+    });
+
+    // Tombol Apply URL
+    document.getElementById('wallpaper-apply-url')?.addEventListener('click', () => {
+      const url = wpInput?.value?.trim();
+      if (!url) return;
+      applyWallpaper(url);
+      if (wpPanel) wpPanel.classList.add('hidden');
+    });
+    wpInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('wallpaper-apply-url')?.click();
+    });
+
+    // Upload file lokal
+    wpFileInput?.addEventListener('change', () => {
+      const file = wpFileInput.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        applyWallpaper(ev.target.result);
+        if (wpPanel) wpPanel.classList.add('hidden');
+      };
+      reader.readAsDataURL(file);
+    });
+    document.getElementById('wallpaper-upload-btn')?.addEventListener('click', () => {
+      wpFileInput?.click();
+    });
+
+    // Tombol Reset ke default
+    document.getElementById('wallpaper-reset')?.addEventListener('click', () => {
+      applyWallpaper('default');
+      if (wpInput) wpInput.value = '';
+      if (wpPanel) wpPanel.classList.add('hidden');
+    });
 
     document.getElementById('lan-address').textContent = '🌐 ' + window.location.host;
   }
