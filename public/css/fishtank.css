@@ -1,0 +1,392 @@
+/* ==========================================================================
+   FISH TANK — Step 4
+   public/css/fishtank.css
+   ========================================================================== */
+
+/* ---- Root ---- */
+.ft-root {
+  display: flex;
+  height: 100%;
+  background: #060d18;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ---- Akuarium ---- */
+.ft-tank-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.ft-tank-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+/* Tooltip ikan */
+.ft-fish-tooltip {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid rgba(100,160,255,0.3);
+  border-radius: 8px;
+  padding: 5px 10px;
+  pointer-events: none;
+  z-index: 10;
+  gap: 1px;
+}
+#ft-tooltip-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7dd3fc;
+}
+#ft-tooltip-age {
+  font-size: 10px;
+  color: #888;
+}
+
+/* ---- Sidebar ---- */
+.ft-sidebar {
+  width: 220px;
+  min-width: 180px;
+  background: #0c1628;
+  border-left: 1px solid rgba(100,160,255,0.15);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.ft-sidebar-header {
+  padding: 12px 14px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #7dd3fc;
+  border-bottom: 1px solid rgba(100,160,255,0.1);
+  background: #0a1420;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+
+.ft-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  flex-shrink: 0;
+}
+
+.ft-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.ft-btn--primary {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(37,99,235,0.3);
+}
+.ft-btn--primary:hover { background: #3b82f6; transform: translateY(-1px); }
+.ft-btn--primary:active { transform: translateY(0); }
+
+.ft-btn--feed {
+  background: rgba(245,166,35,0.15);
+  color: #f5a623;
+  border: 1px solid rgba(245,166,35,0.3);
+}
+.ft-btn--feed:hover { background: rgba(245,166,35,0.25); }
+
+.ft-btn--ghost {
+  background: rgba(255,255,255,0.07);
+  color: #aaa;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.ft-btn--ghost:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+.ft-info-box {
+  margin: 0 12px 10px;
+  padding: 8px 10px;
+  background: rgba(37,99,235,0.1);
+  border: 1px solid rgba(37,99,235,0.2);
+  border-radius: 8px;
+  font-size: 11px;
+  color: #aaa;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+.ft-info-box strong { color: #7dd3fc; }
+
+.ft-fish-list-header {
+  padding: 6px 14px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #556;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  flex-shrink: 0;
+}
+
+.ft-fish-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ft-fish-list::-webkit-scrollbar { width: 3px; }
+.ft-fish-list::-webkit-scrollbar-thumb { background: #223; border-radius: 2px; }
+
+.ft-empty-hint {
+  font-size: 11px;
+  color: #445;
+  text-align: center;
+  padding: 16px 8px;
+  line-height: 1.5;
+}
+
+.ft-fish-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(100,160,255,0.08);
+  border-radius: 8px;
+  padding: 7px 8px;
+}
+
+.ft-fish-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ft-fish-item-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #ccc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.ft-fish-item-bar {
+  height: 3px;
+  background: #1a2a3a;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+.ft-fish-item-fill {
+  height: 100%;
+  background: linear-gradient(to right, #2563eb, #7dd3fc);
+  border-radius: 3px;
+  transition: width 0.5s;
+}
+.ft-fish-item-days {
+  font-size: 9px;
+  color: #556;
+}
+
+/* ---- Modal gambar ikan ---- */
+.ft-draw-modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(3px);
+}
+
+.ft-draw-card {
+  background: #0e1c2e;
+  border: 1px solid rgba(100,160,255,0.2);
+  border-radius: 14px;
+  padding: 20px;
+  width: 420px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+
+.ft-draw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 700;
+  color: #7dd3fc;
+}
+
+.ft-draw-close {
+  background: transparent;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.12s, background 0.12s;
+}
+.ft-draw-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+.ft-draw-hint {
+  font-size: 11px;
+  color: #888;
+  line-height: 1.5;
+}
+
+/* Toolbar */
+.ft-draw-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.ft-color-palette {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ft-color-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.1s;
+  flex-shrink: 0;
+}
+.ft-color-btn:hover { transform: scale(1.2); }
+.ft-color-btn.active { border-color: #fff; transform: scale(1.2); }
+
+#ft-custom-color {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  background: transparent;
+}
+
+.ft-brush-sizes {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.ft-size-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #aaa;
+  transition: all 0.12s;
+}
+.ft-size-btn:hover { background: rgba(255,255,255,0.14); }
+.ft-size-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+
+.ft-tool-btn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ft-tool-btn:hover { background: rgba(255,255,255,0.14); }
+.ft-tool-btn.active { background: #7c3aed; border-color: #7c3aed; }
+
+/* Kanvas gambar */
+.ft-draw-canvas-wrap {
+  position: relative;
+  border: 2px solid rgba(100,160,255,0.2);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1a2a3a;
+}
+
+#ft-draw-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+  touch-action: none;
+  background: #1a2a3a;
+}
+
+.ft-draw-guide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: rgba(100,160,255,0.15);
+  pointer-events: none;
+  user-select: none;
+}
+
+.ft-draw-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.ft-draw-actions .ft-btn {
+  padding: 9px 18px;
+  font-size: 12px;
+}
+
+/* ---- Responsive mobile ---- */
+@media (max-width: 600px) {
+  .ft-root { flex-direction: column; }
+  .ft-sidebar {
+    width: 100%;
+    max-width: 100%;
+    border-left: none;
+    border-top: 1px solid rgba(100,160,255,0.15);
+    flex-direction: row;
+    overflow-x: auto;
+    height: auto;
+    flex-shrink: 0;
+  }
+  .ft-tank-wrap { flex: 1; min-height: 200px; }
+  .ft-fish-list-header, .ft-fish-list, .ft-info-box { display: none; }
+  .ft-sidebar-header { display: none; }
+  .ft-actions { flex-direction: row; padding: 8px; }
+}
