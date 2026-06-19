@@ -225,23 +225,12 @@ const Desktop = (() => {
       if (icon.classList.contains('is-soon')) return;
       icon.style.cursor = 'pointer';
 
-      // Single click untuk semua perangkat (fix: double-click tidak reliable)
-      let lastClick = 0;
       icon.addEventListener('click', (e) => {
         e.stopPropagation();
-        const now = Date.now();
+        // Hilangkan seleksi ikon lain
         document.querySelectorAll('.desktop-icon').forEach(i => i.classList.remove('is-selected'));
         icon.classList.add('is-selected');
-        // Buka langsung jika: touch device, atau klik kedua dalam 400ms (double-click manual)
-        const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
-        if (isTouchDevice || (now - lastClick < 400)) {
-          openApp(icon.dataset.app);
-        }
-        lastClick = now;
-      });
-      // Tetap support dblclick native
-      icon.addEventListener('dblclick', (e) => {
-        e.stopPropagation();
+        // Buka langsung dengan single click
         openApp(icon.dataset.app);
       });
     });
