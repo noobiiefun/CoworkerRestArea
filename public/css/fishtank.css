@@ -338,7 +338,7 @@
   border: 2px solid rgba(100,160,255,0.2);
   border-radius: 10px;
   overflow: hidden;
-  background: #1a2a3a;
+  background: #12243a;
 }
 
 #ft-draw-canvas {
@@ -347,7 +347,7 @@
   height: auto;
   cursor: crosshair;
   touch-action: none;
-  background: #1a2a3a;
+  background: #12243a;
 }
 
 .ft-draw-guide {

@@ -27,9 +27,10 @@
   let drawCtx = null;
   let isDrawing = false;
   let lastX = 0, lastY = 0;
-  let drawColor = '#2a6edd';
+  let drawColor = '#e05555';
   let drawSize = 6;
-  let drawHistory = []; // untuk undo
+  let drawHistory = [];
+  let isEraserActive = false; // untuk undo
 
   const FISH_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 hari
 
@@ -736,6 +737,16 @@
     if (!modal) return;
     modal.style.display = 'flex';
 
+    // Assign dulu baru bind events
+    drawCanvas = container.querySelector('#ft-draw-canvas');
+    drawCtx = drawCanvas.getContext('2d');
+    isEraserActive = false;
+    drawColor = '#e05555';
+
+    clearDrawCanvas();
+    bindDrawCanvasEvents(container);
+
+    // Update referensi drawCanvas & drawCtx setelah clone di bindDrawCanvasEvents
     drawCanvas = container.querySelector('#ft-draw-canvas');
     drawCtx = drawCanvas.getContext('2d');
     clearDrawCanvas();
@@ -745,29 +756,15 @@
     const infoBox = container.querySelector('#ft-info-box');
     if (myFish) {
       if (infoBox) infoBox.innerHTML = '⚠️ Kamu sudah punya ikan di akuarium. Menggambar lagi akan <strong>menggantikan</strong> ikanmu yang lama.';
+    } else {
+      if (infoBox) infoBox.innerHTML = 'Gambar ikanmu lalu klik <strong>🐟 Lepaskan ke Akuarium!</strong><br>Ikan hidup selama <strong>7 hari</strong>.';
     }
   }
 
   function bindDrawModal(container) {
     container.querySelector('#ft-draw-close')?.addEventListener('click', () => closeDrawModal(container));
     container.querySelector('#ft-draw-cancel')?.addEventListener('click', () => closeDrawModal(container));
-
-    // Submit
     container.querySelector('#ft-draw-submit')?.addEventListener('click', () => submitFish(container));
-
-    // Warna
-    container.querySelectorAll('.ft-color-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        drawColor = btn.dataset.color;
-        container.querySelectorAll('.ft-color-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        isEraser = false;
-      });
-    });
-    container.querySelector('#ft-custom-color')?.addEventListener('input', (e) => {
-      drawColor = e.target.value;
-      isEraser = false;
-    });
 
     // Ukuran kuas
     container.querySelectorAll('.ft-size-btn').forEach(btn => {
@@ -778,62 +775,96 @@
       });
     });
 
-    // Penghapus
-    let isEraser = false;
-    container.querySelector('#ft-eraser-btn')?.addEventListener('click', () => {
-      isEraser = !isEraser;
-      container.querySelector('#ft-eraser-btn').classList.toggle('active', isEraser);
-    });
-
-    // Undo
+    // Bersihkan & Undo — event listener dipasang di sini tapi fungsinya pakai drawCtx yang sudah di-set saat openDrawModal
     container.querySelector('#ft-undo-btn')?.addEventListener('click', () => {
-      if (drawHistory.length === 0) return;
+      if (!drawCtx || drawHistory.length === 0) return;
       drawHistory.pop();
       if (drawHistory.length > 0) {
         const img = new Image();
-        img.onload = () => { drawCtx.clearRect(0,0,360,220); drawCtx.drawImage(img,0,0); };
+        img.onload = () => {
+          drawCtx.clearRect(0, 0, 360, 220);
+          fillDrawBackground();
+          drawCtx.drawImage(img, 0, 0);
+        };
         img.src = drawHistory[drawHistory.length - 1];
       } else {
         clearDrawCanvas();
       }
     });
 
-    // Bersihkan
     container.querySelector('#ft-clear-btn')?.addEventListener('click', clearDrawCanvas);
+  }
 
-    // ---- Events menggambar di canvas ----
-    if (!drawCanvas) return;
+  // Dipanggil dari openDrawModal SETELAH drawCanvas & drawCtx di-assign
+  function bindDrawCanvasEvents(container) {
+    if (!drawCanvas || !drawCtx) return;
+
+    // Hapus event lama jika ada (cegah duplikat saat modal dibuka ulang)
+    const old = drawCanvas.cloneNode(true);
+    drawCanvas.parentNode.replaceChild(old, drawCanvas);
+    drawCanvas = old;
+    drawCtx = drawCanvas.getContext('2d');
+
+    // Warna — dipasang ulang ke drawCanvas baru
+    container.querySelectorAll('.ft-color-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        drawColor = btn.dataset.color;
+        container.querySelectorAll('.ft-color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        container.querySelector('#ft-eraser-btn')?.classList.remove('active');
+        isEraserActive = false;
+      });
+    });
+
+    container.querySelector('#ft-custom-color')?.addEventListener('input', (e) => {
+      drawColor = e.target.value;
+      container.querySelector('#ft-eraser-btn')?.classList.remove('active');
+      isEraserActive = false;
+    });
+
+    // Penghapus
+    container.querySelector('#ft-eraser-btn')?.addEventListener('click', () => {
+      isEraserActive = !isEraserActive;
+      container.querySelector('#ft-eraser-btn')?.classList.toggle('active', isEraserActive);
+    });
 
     function getPos(e) {
       const rect = drawCanvas.getBoundingClientRect();
       const scaleX = drawCanvas.width  / rect.width;
       const scaleY = drawCanvas.height / rect.height;
-      if (e.touches) {
-        return [(e.touches[0].clientX - rect.left) * scaleX, (e.touches[0].clientY - rect.top) * scaleY];
-      }
-      return [(e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY];
+      const src = e.touches ? e.touches[0] : e;
+      return [(src.clientX - rect.left) * scaleX, (src.clientY - rect.top) * scaleY];
     }
 
     function startDraw(e) {
+      e.preventDefault();
       isDrawing = true;
       [lastX, lastY] = getPos(e);
-      // Simpan snapshot untuk undo
+      // Simpan snapshot sebelum mulai coretan baru
       drawHistory.push(drawCanvas.toDataURL());
       if (drawHistory.length > 30) drawHistory.shift();
     }
 
     function draw(e) {
-      if (!isDrawing || !drawCtx) return;
+      if (!isDrawing) return;
       e.preventDefault();
       const [x, y] = getPos(e);
       drawCtx.beginPath();
       drawCtx.moveTo(lastX, lastY);
       drawCtx.lineTo(x, y);
-      drawCtx.strokeStyle = isEraser ? '#0d1520' : drawColor;
-      drawCtx.lineWidth = isEraser ? drawSize * 3 : drawSize;
+      if (isEraserActive) {
+        drawCtx.globalCompositeOperation = 'destination-out';
+        drawCtx.strokeStyle = 'rgba(0,0,0,1)';
+        drawCtx.lineWidth = drawSize * 3;
+      } else {
+        drawCtx.globalCompositeOperation = 'source-over';
+        drawCtx.strokeStyle = drawColor;
+        drawCtx.lineWidth = drawSize;
+      }
       drawCtx.lineCap = 'round';
       drawCtx.lineJoin = 'round';
       drawCtx.stroke();
+      drawCtx.globalCompositeOperation = 'source-over';
       [lastX, lastY] = [x, y];
     }
 
@@ -848,32 +879,46 @@
     drawCanvas.addEventListener('touchend', endDraw);
   }
 
+  function fillDrawBackground() {
+    if (!drawCtx) return;
+    drawCtx.save();
+    drawCtx.globalCompositeOperation = 'source-over';
+    drawCtx.fillStyle = '#12243a';
+    drawCtx.fillRect(0, 0, 360, 220);
+    drawCtx.restore();
+  }
+
   function clearDrawCanvas() {
     if (!drawCtx) return;
-    // Bersihkan ke transparan (bukan background gelap)
     drawCtx.clearRect(0, 0, 360, 220);
-    // Gambar outline panduan ikan (samar)
+    fillDrawBackground();
+    // Outline panduan ikan (samar)
     drawCtx.save();
-    drawCtx.strokeStyle = 'rgba(100,160,255,0.25)';
+    drawCtx.globalCompositeOperation = 'source-over';
+    drawCtx.strokeStyle = 'rgba(100,180,255,0.18)';
     drawCtx.lineWidth = 1.5;
     drawCtx.setLineDash([5, 7]);
-    // Outline badan ikan
+    // Badan
     drawCtx.beginPath();
-    drawCtx.ellipse(180, 110, 90, 55, 0, 0, Math.PI * 2);
+    drawCtx.ellipse(190, 105, 88, 52, 0, 0, Math.PI * 2);
     drawCtx.stroke();
-    // Outline ekor
+    // Ekor
     drawCtx.beginPath();
-    drawCtx.moveTo(92, 110);
-    drawCtx.lineTo(55, 75);
-    drawCtx.lineTo(55, 145);
+    drawCtx.moveTo(103, 105);
+    drawCtx.lineTo(65, 68);
+    drawCtx.lineTo(65, 142);
     drawCtx.closePath();
     drawCtx.stroke();
-    // Teks panduan
+    // Mata
+    drawCtx.beginPath();
+    drawCtx.arc(262, 95, 7, 0, Math.PI * 2);
+    drawCtx.stroke();
     drawCtx.setLineDash([]);
-    drawCtx.fillStyle = 'rgba(100,160,255,0.2)';
-    drawCtx.font = '12px Segoe UI, system-ui, sans-serif';
+    // Teks panduan
+    drawCtx.fillStyle = 'rgba(100,180,255,0.18)';
+    drawCtx.font = '11px Segoe UI, system-ui, sans-serif';
     drawCtx.textAlign = 'center';
-    drawCtx.fillText('← gambar ikanmu di sini →', 180, 195);
+    drawCtx.fillText('← gambar ikanmu di sini →', 180, 200);
     drawCtx.restore();
     drawHistory = [];
   }
@@ -885,34 +930,25 @@
   }
 
   function submitFish(container) {
-    if (!drawCanvas) return;
+    if (!drawCanvas || !drawCtx) return;
 
-    // Validasi: pastikan ada sesuatu yang digambar
-    // Canvas sekarang transparan di background, jadi cek pixel dengan alpha > 0
-    const checkCtx = drawCanvas.getContext('2d');
-    const pixels = checkCtx.getImageData(0, 0, 360, 220).data;
+    // Validasi: cek apakah ada pixel yang berbeda dari background (#12243a = rgb(18,36,58))
+    const pixels = drawCtx.getImageData(0, 0, 360, 220).data;
     let hasDrawing = false;
-    for (let i = 3; i < pixels.length; i += 4) {
-      // Cek alpha channel — jika ada pixel tidak transparan & bukan outline panduan
-      if (pixels[i] > 50) { hasDrawing = true; break; }
+    for (let i = 0; i < pixels.length; i += 4) {
+      const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
+      // Jika pixel jauh berbeda dari background biru gelap → ada gambar
+      if (Math.abs(r - 18) + Math.abs(g - 36) + Math.abs(b - 58) > 60) {
+        hasDrawing = true; break;
+      }
     }
     if (!hasDrawing) {
       alert('Gambar ikanmu dulu sebelum dilepaskan! 🎨');
       return;
     }
 
-    // Export dengan background putih agar gambar kelihatan di akuarium
-    // Buat canvas sementara dengan background putih
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = 360;
-    exportCanvas.height = 220;
-    const exportCtx = exportCanvas.getContext('2d');
-    // Background putih
-    exportCtx.fillStyle = '#ffffff';
-    exportCtx.fillRect(0, 0, 360, 220);
-    // Gambar ikan di atasnya
-    exportCtx.drawImage(drawCanvas, 0, 0);
-    const imageData = exportCanvas.toDataURL('image/jpeg', 0.85); // JPEG lebih kecil
+    // Export langsung — background sudah ada dari fillDrawBackground()
+    const imageData = drawCanvas.toDataURL('image/jpeg', 0.85);
 
     socket?.emit('fishtank:add-fish', {
       imageData,
