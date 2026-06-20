@@ -40,45 +40,59 @@
       <svg viewBox="0 0 1200 700" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#0a0d13"/>
-            <stop offset="55%" stop-color="#121826"/>
-            <stop offset="100%" stop-color="#1c2436"/>
+            <stop offset="0%" stop-color="#1d6fc4"/>
+            <stop offset="45%" stop-color="#4d9eea"/>
+            <stop offset="75%" stop-color="#9fd4f5"/>
+            <stop offset="100%" stop-color="#d7f0fb"/>
           </linearGradient>
-          <radialGradient id="glow" cx="50%" cy="68%" r="45%">
-            <stop offset="0%" stop-color="#ffb454" stop-opacity="0.35"/>
-            <stop offset="100%" stop-color="#ffb454" stop-opacity="0"/>
+          <linearGradient id="hillFar" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#6fbf5e"/>
+            <stop offset="100%" stop-color="#4fa647"/>
+          </linearGradient>
+          <linearGradient id="hillMid" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#4f9e3c"/>
+            <stop offset="100%" stop-color="#377a29"/>
+          </linearGradient>
+          <linearGradient id="hillNear" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#3c8a2e"/>
+            <stop offset="100%" stop-color="#235c1c"/>
+          </linearGradient>
+          <radialGradient id="sunGlow" cx="78%" cy="18%" r="32%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
           </radialGradient>
         </defs>
+
+        <!-- Langit -->
         <rect width="1200" height="700" fill="url(#sky)"/>
-        <rect width="1200" height="700" fill="url(#glow)"/>
-        <g class="stars">
-          <circle cx="120" cy="80" r="1.6" fill="#fff" opacity="0.6"/>
-          <circle cx="300" cy="140" r="1.2" fill="#fff" opacity="0.4"/>
-          <circle cx="520" cy="60" r="1.8" fill="#fff" opacity="0.5"/>
-          <circle cx="760" cy="110" r="1.3" fill="#fff" opacity="0.45"/>
-          <circle cx="940" cy="70" r="1.7" fill="#fff" opacity="0.55"/>
-          <circle cx="1080" cy="150" r="1.2" fill="#fff" opacity="0.4"/>
-          <circle cx="200" cy="220" r="1" fill="#fff" opacity="0.3"/>
-          <circle cx="900" cy="200" r="1" fill="#fff" opacity="0.35"/>
+        <rect width="1200" height="700" fill="url(#sunGlow)"/>
+
+        <!-- Awan -->
+        <g fill="#ffffff" opacity="0.9">
+          <ellipse cx="220" cy="120" rx="80" ry="26"/>
+          <ellipse cx="280" cy="105" rx="60" ry="22"/>
+          <ellipse cx="160" cy="110" rx="50" ry="18"/>
         </g>
-        <!-- road -->
-        <polygon points="430,700 770,700 640,430 560,430" fill="#0d1018"/>
-        <polygon points="595,430 605,430 760,700 700,700" fill="#2a3142" opacity="0.0"/>
-        <line x1="600" y1="430" x2="600" y2="700" stroke="#ffb454" stroke-width="4" stroke-dasharray="14 18" opacity="0.55"/>
-        <!-- rest area sign -->
-        <g transform="translate(870,360)">
-          <rect x="-10" y="0" width="10" height="120" fill="#2a3142"/>
-          <rect x="-90" y="-58" width="170" height="64" rx="8" fill="#1c2436" stroke="#ffb454" stroke-width="2"/>
-          <text x="-5" y="-30" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="15" fill="#ffb454" letter-spacing="1">REST AREA</text>
-          <text x="-5" y="-10" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#7fd9cf">NEXT EXIT • OPEN 24H</text>
+        <g fill="#ffffff" opacity="0.75">
+          <ellipse cx="780" cy="90" rx="70" ry="20"/>
+          <ellipse cx="840" cy="78" rx="50" ry="16"/>
         </g>
-        <!-- bench / cup silhouette -->
-        <g transform="translate(310,520)" opacity="0.85">
-          <rect x="0" y="40" width="90" height="8" fill="#2a3142"/>
-          <rect x="6" y="48" width="8" height="26" fill="#2a3142"/>
-          <rect x="76" y="48" width="8" height="26" fill="#2a3142"/>
-          <rect x="0" y="24" width="90" height="8" fill="#2a3142"/>
+        <g fill="#ffffff" opacity="0.6">
+          <ellipse cx="980" cy="160" rx="60" ry="18"/>
+          <ellipse cx="1030" cy="150" rx="42" ry="14"/>
         </g>
+
+        <!-- Perbukitan jauh -->
+        <path d="M0,460 C150,400 300,430 450,400 C600,370 750,410 900,390 C1050,370 1150,400 1200,390 L1200,700 L0,700 Z" fill="url(#hillFar)"/>
+
+        <!-- Perbukitan tengah -->
+        <path d="M0,520 C180,460 360,500 540,460 C720,420 900,470 1080,440 C1140,432 1180,440 1200,445 L1200,700 L0,700 Z" fill="url(#hillMid)"/>
+
+        <!-- Perbukitan dekat (depan) -->
+        <path d="M0,600 C200,540 380,590 600,545 C780,510 950,560 1200,520 L1200,700 L0,700 Z" fill="url(#hillNear)"/>
+
+        <!-- Highlight rumput di puncak bukit dekat -->
+        <path d="M0,600 C200,540 380,590 600,545 C780,510 950,560 1200,520" fill="none" stroke="#8fd97c" stroke-width="6" opacity="0.55"/>
       </svg>
     </div>
 
@@ -229,7 +243,14 @@
 
     <div id="taskbar">
       <button id="start-btn">
-        <span class="start-glyph">⛽</span> <span class="start-text">Rest Area</span>
+        <span class="start-glyph">
+          <svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+            <rect x="0" y="0" width="9" height="9" fill="#ffffff" opacity="0.95"/>
+            <rect x="11" y="0" width="9" height="9" fill="#ffffff" opacity="0.95"/>
+            <rect x="0" y="11" width="9" height="9" fill="#ffffff" opacity="0.95"/>
+            <rect x="11" y="11" width="9" height="9" fill="#ffffff" opacity="0.95"/>
+          </svg>
+        </span> <span class="start-text">Rest Area</span>
       </button>
       <div id="start-menu" class="hidden">
         <div class="start-menu-item" data-app="chat">💬 Ruang Obrolan</div>
