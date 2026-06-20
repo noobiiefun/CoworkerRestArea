@@ -728,8 +728,8 @@ io.on('connection', (socket) => {
   /** Tambah / ganti ikan user */
   socket.on('fishtank:add-fish', ({ imageData, nickname, ownerId }) => {
     if (!imageData || typeof imageData !== 'string') return;
-    // Batasi ukuran gambar (~200KB base64 cukup untuk 360x220px PNG)
-    if (imageData.length > 300000) { socket.emit('fishtank:error', 'Gambar terlalu besar'); return; }
+    // Batasi ukuran gambar (PNG transparan 360x220px lebih besar dari JPEG, longgarkan limit)
+    if (imageData.length > 600000) { socket.emit('fishtank:error', 'Gambar terlalu besar'); return; }
 
     const cleanNick = String(nickname || user.nickname).trim().slice(0, 24);
     const cleanOwner = String(ownerId || socket.id).slice(0, 64);

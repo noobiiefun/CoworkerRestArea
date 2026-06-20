@@ -1,11 +1,8 @@
 // public/js/fishtank.js
 // Fish Tank — Mini Game Akuarium Bersama
-// - Gambar ikan bebas di canvas (seperti MS Paint mini)
-// - Ikan berenang natural, nama mengikuti ikan
-// - Klik ikan → ikan kabur/berenang menjauh
-// - Beri makan → partikel jatuh, ikan mendekat
-// - TTL 7 hari, data di disk (persisten)
-// - Sinkronisasi real-time via Socket.IO
+// FIX: canvas gambar sekarang transparan murni (PNG), panduan ikan
+// dipindah ke overlay HTML terpisah supaya tidak ikut tersimpan
+// sebagai bagian dari gambar ikan permanen.
 
 (function () {
   'use strict';
@@ -13,16 +10,15 @@
   // ── State ─────────────────────────────────────────────────────────────────
   let socket = null;
   let meUser = null;
-  let fishes = [];        // array fish object dari server
-  let foodParticles = []; // partikel makanan di akuarium
-  let bubbles = [];       // gelembung dekorasi
-  let plants = [];        // tanaman dekorasi
-  let animId = null;      // requestAnimationFrame id
-  let canvas = null;      // canvas akuarium
+  let fishes = [];
+  let foodParticles = [];
+  let bubbles = [];
+  let plants = [];
+  let animId = null;
+  let canvas = null;
   let ctx = null;
   let _container = null;
 
-  // Canvas gambar ikan
   let drawCanvas = null;
   let drawCtx = null;
   let isDrawing = false;
@@ -30,7 +26,7 @@
   let drawColor = '#e05555';
   let drawSize = 6;
   let drawHistory = [];
-  let isEraserActive = false; // untuk undo
+  let isEraserActive = false;
 
   const FISH_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 hari
 
@@ -39,38 +35,24 @@
     return `
 <div class="ft-root" id="ft-root">
 
-  <!-- Akuarium utama -->
   <div class="ft-tank-wrap">
     <canvas class="ft-tank-canvas" id="ft-tank-canvas"></canvas>
-
-    <!-- Overlay info saat hover ikan -->
     <div class="ft-fish-tooltip" id="ft-fish-tooltip" style="display:none">
       <span id="ft-tooltip-name"></span>
       <span id="ft-tooltip-age"></span>
     </div>
   </div>
 
-  <!-- Panel kanan: tombol aksi + daftar ikan -->
   <div class="ft-sidebar">
     <div class="ft-sidebar-header">🐠 Fish Tank</div>
-
-    <!-- Tombol aksi -->
     <div class="ft-actions">
-      <button class="ft-btn ft-btn--primary" id="ft-draw-btn">
-        🎨 Gambar Ikanku
-      </button>
-      <button class="ft-btn ft-btn--feed" id="ft-feed-btn">
-        🍬 Beri Makan
-      </button>
+      <button class="ft-btn ft-btn--primary" id="ft-draw-btn">🎨 Gambar Ikanku</button>
+      <button class="ft-btn ft-btn--feed" id="ft-feed-btn">🍬 Beri Makan</button>
     </div>
-
-    <!-- Info -->
     <div class="ft-info-box" id="ft-info-box">
       Klik <strong>🎨 Gambar Ikanku</strong> untuk menambahkan ikanmu ke akuarium.<br>
       Ikan hidup selama <strong>7 hari</strong>, lalu akan pergi.
     </div>
-
-    <!-- Daftar ikan -->
     <div class="ft-fish-list-header">🐟 Penghuni Akuarium</div>
     <div class="ft-fish-list" id="ft-fish-list">
       <div class="ft-empty-hint">Akuarium masih kosong…</div>
@@ -90,16 +72,13 @@
         Ikan ini akan hidup di akuarium selama 7 hari atas namamu.
       </div>
 
-      <!-- Toolbar -->
       <div class="ft-draw-toolbar">
-        <!-- Warna -->
         <div class="ft-color-palette" id="ft-color-palette">
           ${['#1a1a2e','#e05555','#f5a623','#4caf50','#2a6edd','#9b59b6','#00bcd4','#ff69b4','#fff','#8b4513'].map(c =>
             `<button class="ft-color-btn" data-color="${c}" style="background:${c}" title="${c}"></button>`
           ).join('')}
           <input type="color" id="ft-custom-color" title="Warna kustom" value="#2a6edd">
         </div>
-        <!-- Ukuran kuas -->
         <div class="ft-brush-sizes">
           ${[3,6,10,16].map(s =>
             `<button class="ft-size-btn ${s===6?'active':''}" data-size="${s}">
@@ -107,19 +86,24 @@
             </button>`
           ).join('')}
         </div>
-        <!-- Tools -->
         <button class="ft-tool-btn" id="ft-eraser-btn" title="Penghapus">🧹</button>
         <button class="ft-tool-btn" id="ft-undo-btn" title="Undo">↩</button>
         <button class="ft-tool-btn" id="ft-clear-btn" title="Bersihkan">🗑️</button>
       </div>
 
-      <!-- Kanvas gambar -->
-      <div class="ft-draw-canvas-wrap">
-        <canvas id="ft-draw-canvas" width="360" height="220"></canvas>
-        <div class="ft-draw-guide">← Gambar ikanmu di sini →</div>
+      <!-- Kanvas gambar: canvas asli TRANSPARAN, guide-overlay terpisah di atasnya -->
+      <div class="ft-draw-canvas-wrap" style="position:relative;background:#12243a">
+        <canvas id="ft-draw-canvas" width="360" height="220" style="position:relative;z-index:2"></canvas>
+        <svg class="ft-draw-guide-svg" id="ft-draw-guide-svg"
+             viewBox="0 0 360 220" width="360" height="220"
+             style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1">
+          <ellipse cx="190" cy="105" rx="88" ry="52" fill="none" stroke="rgba(100,180,255,0.18)" stroke-width="1.5" stroke-dasharray="5 7"/>
+          <path d="M103,105 L65,68 L65,142 Z" fill="none" stroke="rgba(100,180,255,0.18)" stroke-width="1.5" stroke-dasharray="5 7"/>
+          <circle cx="262" cy="95" r="7" fill="none" stroke="rgba(100,180,255,0.18)" stroke-width="1.5" stroke-dasharray="5 7"/>
+          <text x="180" y="200" text-anchor="middle" font-size="11" font-family="Segoe UI, system-ui, sans-serif" fill="rgba(100,180,255,0.18)">← gambar ikanmu di sini →</text>
+        </svg>
       </div>
 
-      <!-- Tombol submit -->
       <div class="ft-draw-actions">
         <button class="ft-btn ft-btn--ghost" id="ft-draw-cancel">Batal</button>
         <button class="ft-btn ft-btn--primary" id="ft-draw-submit">🐟 Lepaskan ke Akuarium!</button>
@@ -159,7 +143,6 @@
     const wrap = canvas.parentElement;
     canvas.width  = wrap.clientWidth  || 600;
     canvas.height = wrap.clientHeight || 400;
-    // Re-init dekorasi saat resize
     initDecorations();
   }
 
@@ -168,7 +151,6 @@
     if (!canvas) return;
     const W = canvas.width, H = canvas.height;
 
-    // Tanaman
     plants = [];
     const plantCount = Math.max(3, Math.floor(W / 120));
     for (let i = 0; i < plantCount; i++) {
@@ -181,7 +163,6 @@
       });
     }
 
-    // Gelembung awal
     bubbles = [];
     for (let i = 0; i < 12; i++) {
       bubbles.push(makeBubble(W, H));
@@ -218,7 +199,6 @@
   function drawFrame() {
     const W = canvas.width, H = canvas.height;
 
-    // Background: gradien biru laut
     const bg = ctx.createLinearGradient(0, 0, 0, H);
     bg.addColorStop(0, '#0a1628');
     bg.addColorStop(0.5, '#0d2444');
@@ -226,41 +206,28 @@
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    // Cahaya dari atas
     const lightGrad = ctx.createRadialGradient(W/2, 0, 0, W/2, 0, W * 0.7);
     lightGrad.addColorStop(0, 'rgba(100,180,255,0.08)');
     lightGrad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = lightGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // Pasir di bawah
     const sandGrad = ctx.createLinearGradient(0, H - 28, 0, H);
     sandGrad.addColorStop(0, '#3a2a10');
     sandGrad.addColorStop(1, '#1e1408');
     ctx.fillStyle = sandGrad;
     ctx.fillRect(0, H - 28, W, 28);
 
-    // Tanaman
     drawPlants(W, H);
-
-    // Batu dekorasi
     drawRocks(W, H);
-
-    // Gelembung
     drawBubbles(W, H);
-
-    // Partikel makanan
     updateAndDrawFood(H);
-
-    // Ikan
     updateAndDrawFishes(W, H);
 
-    // Bingkai akuarium
     ctx.strokeStyle = 'rgba(100,160,255,0.15)';
     ctx.lineWidth = 3;
     ctx.strokeRect(1, 1, W - 2, H - 2);
 
-    // Pantulan kaca
     const glare = ctx.createLinearGradient(0, 0, 80, 0);
     glare.addColorStop(0, 'rgba(255,255,255,0.04)');
     glare.addColorStop(1, 'rgba(255,255,255,0)');
@@ -275,7 +242,6 @@
 
       ctx.save();
       ctx.translate(p.x, H - 28);
-      // Batang
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.quadraticCurveTo(swayAmt * 0.5, -p.h * 0.5, swayAmt, -p.h);
@@ -283,7 +249,6 @@
       ctx.lineWidth = 3;
       ctx.stroke();
 
-      // Daun
       for (let i = 0; i < 3; i++) {
         const leafY = -p.h * (0.3 + i * 0.25);
         const leafX = (swayAmt * (0.3 + i * 0.25));
@@ -300,7 +265,6 @@
   }
 
   function drawRocks(W, H) {
-    // Batu-batu kecil tetap (seed dari W supaya tidak berubah saat resize)
     const rng = mulberry32(W * 13 + H * 7);
     for (let i = 0; i < 5; i++) {
       const rx = 30 + rng() * (W - 60);
@@ -317,7 +281,6 @@
     }
   }
 
-  // Pseudo-random number generator dengan seed (supaya batu selalu di posisi sama)
   function mulberry32(seed) {
     return function() {
       seed |= 0; seed = seed + 0x6D2B79F5 | 0;
@@ -328,7 +291,6 @@
   }
 
   function drawBubbles(W, H) {
-    // Tambah gelembung baru sesekali
     if (Math.random() < 0.015) bubbles.push(makeBubble(W, H));
 
     bubbles = bubbles.filter(b => b.y > -10);
@@ -342,7 +304,6 @@
       ctx.strokeStyle = `rgba(150,210,255,${b.opacity})`;
       ctx.lineWidth = 1;
       ctx.stroke();
-      // Kilap
       ctx.beginPath();
       ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.3, b.r * 0.3, 0, Math.PI * 2);
       ctx.fillStyle = `rgba(255,255,255,${b.opacity * 0.6})`;
@@ -374,14 +335,12 @@
       if (!fish._state) initFishState(fish, W, H);
       const s = fish._state;
 
-      // Jika ikan mati (TTL habis), tampilkan efek mati lalu hapus
       const age = now - fish.createdAt;
       if (age > FISH_TTL_MS) {
         fish._dead = true;
         return;
       }
 
-      // Tujuan: makanan terdekat, atau wandering
       updateFishTarget(fish, s, W, H);
       moveFish(fish, s, W, H);
       drawFish(fish, s, W, H, age);
@@ -400,22 +359,21 @@
       tail: 0,
       tailSpeed: 0.08 + Math.random() * 0.06,
       wobble: Math.random() * Math.PI * 2,
-      scared: 0,          // countdown kabur (frames)
+      scared: 0,
       scaredDirX: 0,
       scaredDirY: 0,
       idleTimer: 0,
-      img: null           // ImageBitmap dari dataURL
+      img: null
     };
-    // Load gambar ikan
     if (fish.imageData) {
       const img = new Image();
       img.onload = () => { fish._state.img = img; };
+      img.onerror = () => { fish._state.img = null; }; // fallback ke ikan generik kalau gagal load
       img.src = fish.imageData;
     }
   }
 
   function updateFishTarget(fish, s, W, H) {
-    // Kabur dari klik
     if (s.scared > 0) {
       s.scared--;
       const speed = 3.5;
@@ -424,20 +382,17 @@
       return;
     }
 
-    // Cari makanan terdekat
     const nearby = foodParticles.filter(f => !f.eaten && Math.hypot(f.x - s.x, f.y - s.y) < 120);
     if (nearby.length > 0) {
       const closest = nearby.sort((a, b) => Math.hypot(a.x - s.x, a.y - s.y) - Math.hypot(b.x - s.x, b.y - s.y))[0];
       s.targetX = closest.x;
       s.targetY = closest.y;
-      // Makan jika sangat dekat
       if (Math.hypot(closest.x - s.x, closest.y - s.y) < 12) {
         closest.eaten = true;
         s.targetX = null;
         s.targetY = null;
       }
     } else {
-      // Wandering: sesekali pilih target baru
       s.idleTimer--;
       if (s.idleTimer <= 0) {
         s.targetX = 60 + Math.random() * (W - 120);
@@ -459,19 +414,16 @@
       }
     }
 
-    // Batasi kecepatan
     const v = Math.hypot(s.vx, s.vy);
     const maxV = s.scared > 0 ? 4 : speed;
     if (v > maxV) { s.vx = s.vx / v * maxV; s.vy = s.vy / v * maxV; }
 
-    // Friction
     s.vx *= 0.96;
     s.vy *= 0.96;
 
     s.x += s.vx;
     s.y += s.vy;
 
-    // Pantulan dari tepi
     const margin = 30;
     if (s.x < margin) { s.vx += 0.3; }
     if (s.x > W - margin) { s.vx -= 0.3; }
@@ -481,7 +433,6 @@
     s.x = Math.max(10, Math.min(W - 10, s.x));
     s.y = Math.max(10, Math.min(H - 40, s.y));
 
-    // Animasi ekor
     s.tail += s.tailSpeed;
   }
 
@@ -492,24 +443,20 @@
     const angle = Math.atan2(s.vy, s.vx);
     ctx.rotate(angle);
 
-    // Skala ikan: makin tua makin besar (max setelah 2 hari)
     const growRatio = Math.min(1, age / (2 * 24 * 3600 * 1000));
     const fishW = 48 + growRatio * 16;
     const fishH = 28 + growRatio * 8;
 
-    // Transparansi: memudar menjelang kematian (hari ke-6)
     const fadeStart = FISH_TTL_MS * 0.85;
     const alpha = age > fadeStart ? 1 - (age - fadeStart) / (FISH_TTL_MS - fadeStart) : 1;
     ctx.globalAlpha = Math.max(0.1, alpha);
 
     if (s.img) {
-      // Gambar ikan custom (flipped jika bergerak ke kiri sudah di-rotate angle)
       const scaleX = s.vx < -0.1 ? -1 : 1;
       ctx.scale(scaleX, 1);
       ctx.drawImage(s.img, -fishW/2, -fishH/2, fishW, fishH);
       ctx.scale(scaleX, 1);
     } else {
-      // Fallback: ikan generik dengan warna acak per ID
       const hue = (parseInt(fish.id.slice(-4), 36) % 360) || 200;
       drawGenericFish(ctx, fishW, fishH, hue, s.tail, s.vx);
     }
@@ -517,7 +464,6 @@
     ctx.globalAlpha = 1;
     ctx.restore();
 
-    // Label nama (selalu di atas ikan, tidak ikut rotasi)
     drawFishLabel(fish, s, alpha);
   }
 
@@ -525,7 +471,6 @@
     const flip = vx < -0.1 ? -1 : 1;
     ctx.scale(flip, 1);
 
-    // Ekor
     const tailWag = Math.sin(tail) * 8;
     ctx.beginPath();
     ctx.moveTo(-W * 0.3, 0);
@@ -535,13 +480,11 @@
     ctx.fillStyle = `hsl(${hue}, 70%, 35%)`;
     ctx.fill();
 
-    // Badan
     ctx.beginPath();
     ctx.ellipse(0, 0, W * 0.45, H * 0.38, 0, 0, Math.PI * 2);
     ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
     ctx.fill();
 
-    // Pola badan
     ctx.beginPath();
     ctx.ellipse(W * 0.05, 0, W * 0.25, H * 0.22, 0, 0, Math.PI * 2);
     ctx.fillStyle = `hsl(${hue+20}, 60%, 60%)`;
@@ -549,7 +492,6 @@
     ctx.fill();
     ctx.globalAlpha = 1;
 
-    // Mata
     ctx.beginPath();
     ctx.arc(W * 0.28, -H * 0.08, 4, 0, Math.PI * 2);
     ctx.fillStyle = '#fff';
@@ -559,7 +501,6 @@
     ctx.fillStyle = '#111';
     ctx.fill();
 
-    // Sirip atas
     ctx.beginPath();
     ctx.moveTo(-W * 0.05, -H * 0.35);
     ctx.quadraticCurveTo(W * 0.1, -H * 0.6, W * 0.25, -H * 0.35);
@@ -588,13 +529,11 @@
     const rw = textW + padding * 2;
     const rh = fontSize + 6;
 
-    // Background pill
     ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.beginPath();
     ctx.roundRect(rx, ry, rw, rh, 6);
     ctx.fill();
 
-    // Teks
     ctx.fillStyle = '#fff';
     ctx.fillText(label, s.x, ry + fontSize);
     ctx.restore();
@@ -621,7 +560,6 @@
       if (tt) tt.style.display = 'none';
     });
 
-    // Touch support
     canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
       const t = e.touches[0];
@@ -637,7 +575,6 @@
       const s = fish._state;
       const dist = Math.hypot(cx - s.x, cy - s.y);
       if (dist < 32) {
-        // Ikan kabur menjauh
         const dx = s.x - cx;
         const dy = s.y - cy;
         const len = Math.hypot(dx, dy) || 1;
@@ -645,7 +582,6 @@
         s.scaredDirX = dx / len;
         s.scaredDirY = dy / len;
         hit = true;
-        // Beritahu server
         socket?.emit('fishtank:poke-fish', fish.id);
       }
     });
@@ -717,7 +653,6 @@
   function dropFood(container) {
     if (!canvas) return;
     const W = canvas.width;
-    // Jatuhkan 6-10 partikel makanan di posisi random
     const count = 6 + Math.floor(Math.random() * 5);
     for (let i = 0; i < count; i++) {
       foodParticles.push({
@@ -737,21 +672,12 @@
     if (!modal) return;
     modal.style.display = 'flex';
 
-    // Assign dulu baru bind events
-    drawCanvas = container.querySelector('#ft-draw-canvas');
-    drawCtx = drawCanvas.getContext('2d');
     isEraserActive = false;
     drawColor = '#e05555';
 
-    clearDrawCanvas();
-    bindDrawCanvasEvents(container);
-
-    // Update referensi drawCanvas & drawCtx setelah clone di bindDrawCanvasEvents
-    drawCanvas = container.querySelector('#ft-draw-canvas');
-    drawCtx = drawCanvas.getContext('2d');
+    bindDrawCanvasEvents(container); // assign drawCanvas/drawCtx + clone untuk hapus listener lama
     clearDrawCanvas();
 
-    // Cek apakah user sudah punya ikan
     const myFish = fishes.find(f => f.ownerId === meUser?.id);
     const infoBox = container.querySelector('#ft-info-box');
     if (myFish) {
@@ -766,7 +692,6 @@
     container.querySelector('#ft-draw-cancel')?.addEventListener('click', () => closeDrawModal(container));
     container.querySelector('#ft-draw-submit')?.addEventListener('click', () => submitFish(container));
 
-    // Ukuran kuas
     container.querySelectorAll('.ft-size-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         drawSize = parseInt(btn.dataset.size);
@@ -775,37 +700,31 @@
       });
     });
 
-    // Bersihkan & Undo — event listener dipasang di sini tapi fungsinya pakai drawCtx yang sudah di-set saat openDrawModal
     container.querySelector('#ft-undo-btn')?.addEventListener('click', () => {
       if (!drawCtx || drawHistory.length === 0) return;
       drawHistory.pop();
+      drawCtx.clearRect(0, 0, 360, 220);
       if (drawHistory.length > 0) {
         const img = new Image();
-        img.onload = () => {
-          drawCtx.clearRect(0, 0, 360, 220);
-          fillDrawBackground();
-          drawCtx.drawImage(img, 0, 0);
-        };
+        img.onload = () => { drawCtx.drawImage(img, 0, 0); };
         img.src = drawHistory[drawHistory.length - 1];
-      } else {
-        clearDrawCanvas();
       }
     });
 
     container.querySelector('#ft-clear-btn')?.addEventListener('click', clearDrawCanvas);
   }
 
-  // Dipanggil dari openDrawModal SETELAH drawCanvas & drawCtx di-assign
+  // Dipanggil setiap kali modal dibuka — pasang ulang listener pada canvas baru
   function bindDrawCanvasEvents(container) {
-    if (!drawCanvas || !drawCtx) return;
+    const fresh = container.querySelector('#ft-draw-canvas');
+    if (!fresh) return;
 
-    // Hapus event lama jika ada (cegah duplikat saat modal dibuka ulang)
-    const old = drawCanvas.cloneNode(true);
-    drawCanvas.parentNode.replaceChild(old, drawCanvas);
+    // Ganti elemen canvas dengan clone-nya supaya listener lama tidak menumpuk
+    const old = fresh.cloneNode(true);
+    fresh.parentNode.replaceChild(old, fresh);
     drawCanvas = old;
     drawCtx = drawCanvas.getContext('2d');
 
-    // Warna — dipasang ulang ke drawCanvas baru
     container.querySelectorAll('.ft-color-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         drawColor = btn.dataset.color;
@@ -822,7 +741,6 @@
       isEraserActive = false;
     });
 
-    // Penghapus
     container.querySelector('#ft-eraser-btn')?.addEventListener('click', () => {
       isEraserActive = !isEraserActive;
       container.querySelector('#ft-eraser-btn')?.classList.toggle('active', isEraserActive);
@@ -840,8 +758,7 @@
       e.preventDefault();
       isDrawing = true;
       [lastX, lastY] = getPos(e);
-      // Simpan snapshot sebelum mulai coretan baru
-      drawHistory.push(drawCanvas.toDataURL());
+      drawHistory.push(drawCanvas.toDataURL()); // PNG, otomatis transparan
       if (drawHistory.length > 30) drawHistory.shift();
     }
 
@@ -879,47 +796,12 @@
     drawCanvas.addEventListener('touchend', endDraw);
   }
 
-  function fillDrawBackground() {
-    if (!drawCtx) return;
-    drawCtx.save();
-    drawCtx.globalCompositeOperation = 'source-over';
-    drawCtx.fillStyle = '#12243a';
-    drawCtx.fillRect(0, 0, 360, 220);
-    drawCtx.restore();
-  }
-
+  // FIX: canvas gambar dibiarkan transparan murni — TIDAK ada background
+  // solid yang dilukis ke dalamnya. Panduan ikan sekarang berupa SVG overlay
+  // terpisah (#ft-draw-guide-svg) yang tidak ikut diekspor ke imageData.
   function clearDrawCanvas() {
     if (!drawCtx) return;
     drawCtx.clearRect(0, 0, 360, 220);
-    fillDrawBackground();
-    // Outline panduan ikan (samar)
-    drawCtx.save();
-    drawCtx.globalCompositeOperation = 'source-over';
-    drawCtx.strokeStyle = 'rgba(100,180,255,0.18)';
-    drawCtx.lineWidth = 1.5;
-    drawCtx.setLineDash([5, 7]);
-    // Badan
-    drawCtx.beginPath();
-    drawCtx.ellipse(190, 105, 88, 52, 0, 0, Math.PI * 2);
-    drawCtx.stroke();
-    // Ekor
-    drawCtx.beginPath();
-    drawCtx.moveTo(103, 105);
-    drawCtx.lineTo(65, 68);
-    drawCtx.lineTo(65, 142);
-    drawCtx.closePath();
-    drawCtx.stroke();
-    // Mata
-    drawCtx.beginPath();
-    drawCtx.arc(262, 95, 7, 0, Math.PI * 2);
-    drawCtx.stroke();
-    drawCtx.setLineDash([]);
-    // Teks panduan
-    drawCtx.fillStyle = 'rgba(100,180,255,0.18)';
-    drawCtx.font = '11px Segoe UI, system-ui, sans-serif';
-    drawCtx.textAlign = 'center';
-    drawCtx.fillText('← gambar ikanmu di sini →', 180, 200);
-    drawCtx.restore();
     drawHistory = [];
   }
 
@@ -932,23 +814,20 @@
   function submitFish(container) {
     if (!drawCanvas || !drawCtx) return;
 
-    // Validasi: cek apakah ada pixel yang berbeda dari background (#12243a = rgb(18,36,58))
+    // Validasi: cek channel alpha — canvas transparan murni,
+    // jadi ada gambar kalau ada pixel dengan alpha > 10
     const pixels = drawCtx.getImageData(0, 0, 360, 220).data;
     let hasDrawing = false;
-    for (let i = 0; i < pixels.length; i += 4) {
-      const r = pixels[i], g = pixels[i+1], b = pixels[i+2];
-      // Jika pixel jauh berbeda dari background biru gelap → ada gambar
-      if (Math.abs(r - 18) + Math.abs(g - 36) + Math.abs(b - 58) > 60) {
-        hasDrawing = true; break;
-      }
+    for (let i = 3; i < pixels.length; i += 4) {
+      if (pixels[i] > 10) { hasDrawing = true; break; }
     }
     if (!hasDrawing) {
       alert('Gambar ikanmu dulu sebelum dilepaskan! 🎨');
       return;
     }
 
-    // Export langsung — background sudah ada dari fillDrawBackground()
-    const imageData = drawCanvas.toDataURL('image/jpeg', 0.85);
+    // Export sebagai PNG agar transparansi tetap terjaga di akuarium
+    const imageData = drawCanvas.toDataURL('image/png');
 
     socket?.emit('fishtank:add-fish', {
       imageData,
