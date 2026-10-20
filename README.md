@@ -119,12 +119,29 @@ Terminal akan menampilkan:
 
 ---
 
+## 📚 Dokumentasi
+
+Dokumentasi lengkap ada di folder [`docs/`](docs/README.md):
+
+| Dokumen | Isi |
+|---------|-----|
+| [docs/README.md](docs/README.md) | Index dokumentasi — pilih jalur sesuai kebutuhanmu |
+| [docs/user-guide.md](docs/user-guide.md) | Panduan pengguna: cara install, jalanin server, pakai tiap fitur |
+| [docs/architecture.md](docs/architecture.md) | Arsitektur sistem, diagram komponen, keputusan desain |
+| [docs/api-reference.md](docs/api-reference.md) | Daftar lengkap Socket.IO events & REST endpoints |
+| [docs/developer-guide.md](docs/developer-guide.md) | Panduan developer: state, konvensi kode, tambah fitur, bug log |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | FAQ & penyelesaian masalah umum |
+| [docs/changelog.md](docs/changelog.md) | Riwayat perubahan per langkah pengembangan |
+
+---
+
 ## Struktur Project
 
 ```
 coworker-rest-area/
 ├── server.js               # Express + Socket.IO + WebRTC signaling
 ├── package.json
+├── docs/                   # Dokumentasi (lihat tabel di atas)
 └── public/
     ├── index.html           # Boot screen + shell desktop
     ├── uploads/             # Video tersimpan di sini (dibuat otomatis)
