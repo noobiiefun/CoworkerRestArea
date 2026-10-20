@@ -1,9 +1,13 @@
-# Coworker Rest Area — Developer Documentation
+# 📘 Panduan Developer — Coworker Rest Area
 
 > Dokumen ini ditujukan untuk developer atau AI yang ingin mengembangkan,
 > memperbaiki bug, atau menambahkan fitur baru ke aplikasi Coworker Rest Area.
 > Tidak ada kode di dokumen ini — hanya arsitektur, alur data, dan panduan
 > kontribusi.
+>
+> 📌 Ringkasan event & endpoint telah dipisah ke [API Reference](api-reference.md);
+> gambaran besar sistem ada di [Architecture](architecture.md).
+> Kembali ke [Index Dokumentasi](README.md).
 
 ---
 
